@@ -56,7 +56,13 @@ class _AuthPageState extends State<AuthPage> {
             email: _emailController.text.trim(),
             password: _passwordController.text,
           );
-          //  No manual navigation here — AuthStateManager takes over
+          if (mounted) {
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(builder: (_) => const AuthStateManager()),
+              (route) => false,
+            );
+          }
         } else {
           // Sign Up
           await authService.value.createAccount(

@@ -30,11 +30,8 @@ class AuthService {
 
   Future<void> sendEmailVerification() async {
   try {
-    print("✅ Sending verification email to: ${currentUser?.email}...");
     await currentUser?.sendEmailVerification();
-    print("✅ Email verification sent to: ${currentUser?.email}");
   } catch (e) {
-    print("❌ Error sending email: $e");
     rethrow;
   }
 }
