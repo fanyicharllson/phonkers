@@ -28,11 +28,7 @@ class _WelcomeInfoPageState extends State<WelcomeInfoPage> {
       // Navigate to next page
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(
-          builder: (context) {
-            return AuthPage();
-          },
-        ),
+        MaterialPageRoute(builder: (context) => const AuthPage()),
       );
     }
   }

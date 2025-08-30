@@ -113,9 +113,7 @@ class WelcomePage extends StatelessWidget {
                     Navigator.pushReplacement(
                       context,
                       MaterialPageRoute(
-                        builder: (context) {
-                          return WelcomeInfoPage();
-                        },
+                        builder: (context) => const WelcomeInfoPage(),
                       ),
                     );
                   },

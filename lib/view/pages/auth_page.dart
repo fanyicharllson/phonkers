@@ -1,4 +1,9 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:phonkers/firebase_auth_service/auth_service.dart';
+import 'package:phonkers/firebase_auth_service/auth_state_manager.dart';
+// import 'package:phonkers/view/pages/email_check_page.dart';
+import 'package:phonkers/view/pages/reset_password_page.dart';
 
 class AuthPage extends StatefulWidget {
   const AuthPage({super.key});
@@ -11,7 +16,8 @@ class _AuthPageState extends State<AuthPage> {
   bool isLogin = true;
   bool isPasswordVisible = false;
   bool isConfirmPasswordVisible = false;
-  
+  bool isLoading = false;
+
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -39,13 +45,57 @@ class _AuthPageState extends State<AuthPage> {
     });
   }
 
-  void _handleSubmit() {
+  void _handleSubmit() async {
     if (_formKey.currentState!.validate()) {
-      // TODO: Implement Firebase authentication
-      if (isLogin) {
-        print("Login: ${_emailController.text}");
-      } else {
-        print("Sign up: ${_nameController.text}, ${_emailController.text}");
+      setState(() => isLoading = true);
+
+      try {
+        if (isLogin) {
+          // Sign In
+          await authService.value.signIn(
+            email: _emailController.text.trim(),
+            password: _passwordController.text,
+          );
+          //  No manual navigation here — AuthStateManager takes over
+        } else {
+          // Sign Up
+          await authService.value.createAccount(
+            email: _emailController.text.trim(),
+            password: _passwordController.text,
+          );
+
+          // Update display name
+          await authService.value.updateUsername(
+            username: _nameController.text.trim(),
+          );
+
+          // Send verification email
+          await authService.value.sendEmailVerification();
+
+          if (mounted) {
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(builder: (_) => const AuthStateManager()),
+              (route) => false,
+            );
+          }
+        }
+      } on FirebaseAuthException catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                e.message ?? "An error occurred",
+                style: const TextStyle(color: Colors.white),
+              ),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      } finally {
+        if (mounted) {
+          setState(() => isLoading = false);
+        }
       }
     }
   }
@@ -59,11 +109,7 @@ class _AuthPageState extends State<AuthPage> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFF0A0A0F),
-              Color(0xFF1A0B2E),
-              Color(0xFF0A0A0F),
-            ],
+            colors: [Color(0xFF0A0A0F), Color(0xFF1A0B2E), Color(0xFF0A0A0F)],
           ),
         ),
         child: SafeArea(
@@ -85,9 +131,9 @@ class _AuthPageState extends State<AuthPage> {
                       ),
                     ),
                   ),
-                  
+
                   const SizedBox(height: 40),
-                  
+
                   // Title Section
                   Text(
                     isLogin ? "Welcome Back!" : "Join Phonkers",
@@ -97,12 +143,12 @@ class _AuthPageState extends State<AuthPage> {
                       color: Colors.white,
                     ),
                   ),
-                  
+
                   const SizedBox(height: 8),
-                  
+
                   Text(
-                    isLogin 
-                        ? "Sign in to continue your phonk journey" 
+                    isLogin
+                        ? "Sign in to continue your phonk journey"
                         : "Create your account and dive into the beats",
                     textAlign: TextAlign.center,
                     style: TextStyle(
@@ -110,9 +156,9 @@ class _AuthPageState extends State<AuthPage> {
                       color: Colors.white.withValues(alpha: 0.7),
                     ),
                   ),
-                  
+
                   const SizedBox(height: 40),
-                  
+
                   // Form Container
                   Container(
                     padding: const EdgeInsets.all(24),
@@ -140,7 +186,7 @@ class _AuthPageState extends State<AuthPage> {
                           ),
                           const SizedBox(height: 16),
                         ],
-                        
+
                         // Email Field
                         _buildTextField(
                           controller: _emailController,
@@ -151,15 +197,17 @@ class _AuthPageState extends State<AuthPage> {
                             if (value == null || value.trim().isEmpty) {
                               return "Please enter your email";
                             }
-                            if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+                            if (!RegExp(
+                              r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+                            ).hasMatch(value)) {
                               return "Please enter a valid email";
                             }
                             return null;
                           },
                         ),
-                        
+
                         const SizedBox(height: 16),
-                        
+
                         // Password Field
                         _buildTextField(
                           controller: _passwordController,
@@ -182,7 +230,7 @@ class _AuthPageState extends State<AuthPage> {
                             return null;
                           },
                         ),
-                        
+
                         // Confirm Password Field (only for sign up)
                         if (!isLogin) ...[
                           const SizedBox(height: 16),
@@ -194,7 +242,8 @@ class _AuthPageState extends State<AuthPage> {
                             isPasswordVisible: isConfirmPasswordVisible,
                             onTogglePassword: () {
                               setState(() {
-                                isConfirmPasswordVisible = !isConfirmPasswordVisible;
+                                isConfirmPasswordVisible =
+                                    !isConfirmPasswordVisible;
                               });
                             },
                             validator: (value) {
@@ -208,7 +257,7 @@ class _AuthPageState extends State<AuthPage> {
                             },
                           ),
                         ],
-                        
+
                         // Forgot Password (only for login)
                         if (isLogin) ...[
                           const SizedBox(height: 16),
@@ -216,8 +265,16 @@ class _AuthPageState extends State<AuthPage> {
                             alignment: Alignment.centerRight,
                             child: TextButton(
                               onPressed: () {
-                                // TODO: Implement forgot password
-                                print("Forgot password");
+                                isLoading
+                                    ? null
+                                    : Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) {
+                                            return ResetPasswordPage();
+                                          },
+                                        ),
+                                      );
                               },
                               child: Text(
                                 "Forgot Password?",
@@ -232,9 +289,9 @@ class _AuthPageState extends State<AuthPage> {
                       ],
                     ),
                   ),
-                  
+
                   const SizedBox(height: 32),
-                  
+
                   // Submit Button
                   Container(
                     width: double.infinity,
@@ -253,7 +310,9 @@ class _AuthPageState extends State<AuthPage> {
                       ],
                     ),
                     child: ElevatedButton(
-                      onPressed: _handleSubmit,
+                      onPressed: isLoading
+                          ? null
+                          : _handleSubmit, // Disable when loading
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.transparent,
                         shadowColor: Colors.transparent,
@@ -261,33 +320,42 @@ class _AuthPageState extends State<AuthPage> {
                           borderRadius: BorderRadius.circular(25),
                         ),
                       ),
-                      child: Text(
-                        isLogin ? "Sign In" : "Create Account",
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
-                        ),
-                      ),
+                      child: isLoading
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : Text(
+                              isLogin ? "Sign In" : "Create Account",
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
+                            ),
                     ),
                   ),
-                  
+
                   const SizedBox(height: 24),
-                  
+
                   // Toggle Mode
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        isLogin 
-                            ? "Don't have an account? " 
+                        isLogin
+                            ? "Don't have an account? "
                             : "Already have an account? ",
                         style: TextStyle(
                           color: Colors.white.withValues(alpha: 0.7),
                         ),
                       ),
                       TextButton(
-                        onPressed: _toggleMode,
+                        onPressed: isLoading ? null : _toggleMode,
                         child: Text(
                           isLogin ? "Sign Up" : "Sign In",
                           style: const TextStyle(
@@ -298,7 +366,7 @@ class _AuthPageState extends State<AuthPage> {
                       ),
                     ],
                   ),
-                  
+
                   const SizedBox(height: 20),
                 ],
               ),
@@ -327,13 +395,8 @@ class _AuthPageState extends State<AuthPage> {
       style: const TextStyle(color: Colors.white),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: TextStyle(
-          color: Colors.white.withValues(alpha: 0.7),
-        ),
-        prefixIcon: Icon(
-          icon,
-          color: Colors.white.withValues(alpha: 0.7),
-        ),
+        labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
+        prefixIcon: Icon(icon, color: Colors.white.withValues(alpha: 0.7)),
         suffixIcon: isPassword
             ? IconButton(
                 onPressed: onTogglePassword,
@@ -347,35 +410,23 @@ class _AuthPageState extends State<AuthPage> {
         fillColor: Colors.white.withValues(alpha: 0.05),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(
-            color: Colors.white.withValues(alpha: 0.2),
-          ),
+          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.2)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(
-            color: Colors.white.withValues(alpha: 0.2),
-          ),
+          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.2)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(
-            color: Colors.purple,
-            width: 2,
-          ),
+          borderSide: const BorderSide(color: Colors.purple, width: 2),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(
-            color: Colors.red,
-          ),
+          borderSide: const BorderSide(color: Colors.red),
         ),
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(
-            color: Colors.red,
-            width: 2,
-          ),
+          borderSide: const BorderSide(color: Colors.red, width: 2),
         ),
       ),
     );
