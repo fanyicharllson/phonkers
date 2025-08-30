@@ -95,6 +95,8 @@ class _AuthPageState extends State<AuthPage> {
                 style: const TextStyle(color: Colors.white),
               ),
               backgroundColor: Colors.red,
+              behavior: SnackBarBehavior.floating,
+              duration: Duration(seconds: 5),
             ),
           );
         }

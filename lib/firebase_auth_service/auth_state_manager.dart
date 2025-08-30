@@ -1,21 +1,47 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:phonkers/firebase_auth_service/auth_service.dart';
 import 'package:phonkers/view/pages/auth_page.dart';
 import 'package:phonkers/view/pages/email_check_page.dart';
 import 'package:phonkers/view/pages/main_page.dart';
 import 'package:phonkers/view/pages/welcome_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-class AuthStateManager extends StatelessWidget {
+class AuthStateManager extends StatefulWidget {
   const AuthStateManager({super.key});
 
   @override
+  State<AuthStateManager> createState() => _AuthStateManagerState();
+}
+
+class _AuthStateManagerState extends State<AuthStateManager> {
+  bool _isInitializing = true;
+
+  @override
+  void initState() {
+    super.initState();
+    // Show loading for at least 3 second, then allow auth stream
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted) {
+        setState(() {
+          _isInitializing = false;
+        });
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (_isInitializing) {
+      return const LoadingScreen();
+    }
+
     return StreamBuilder<User?>(
-      stream: FirebaseAuth.instance.authStateChanges(),
+      stream: authService.value.authStateChanges,
       builder: (context, snapshot) {
         // Still loading
         if (snapshot.connectionState == ConnectionState.waiting) {
+          print("Currently showing loading...");
           return const LoadingScreen();
         }
 
@@ -94,7 +120,7 @@ class LoadingScreen extends StatelessWidget {
               const SizedBox(height: 40),
 
               const CircularProgressIndicator(
-                color: Colors.purple,
+                color: Colors.white,
                 strokeWidth: 3,
               ),
 
