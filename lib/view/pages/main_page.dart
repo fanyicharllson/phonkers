@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:phonkers/data/service/audio_player_service.dart';
 import 'package:phonkers/view/screens/community_screen.dart';
 import 'package:phonkers/view/screens/home_screen.dart';
 import 'package:phonkers/view/screens/library_screen.dart';
@@ -17,26 +18,35 @@ class _MainPageState extends State<MainPage> {
   int _currentIndex = 0;
   final PageController _pageController = PageController();
 
-  final List<Widget> _pages = [
-    const HomeScreen(),
-    const SearchScreen(),
-    const LibraryScreen(),
-    const CommunityScreen(),
-    const ProfileScreen(),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    AudioPlayerService.initialize();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF0A0A0F),
-      body: PageView(
-        controller: _pageController,
-        onPageChanged: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
-        children: _pages,
+      body: Stack(
+        children: [
+          PageView(
+            controller: _pageController,
+            onPageChanged: (index) {
+              setState(() {
+                _currentIndex = index;
+              });
+            },
+            children: const [
+              HomeScreen(),
+              SearchScreen(),
+              LibraryScreen(),
+              CommunityScreen(),
+              ProfileScreen(),
+            ],
+          ),
+          
+        ],
       ),
       bottomNavigationBar: CustomBottomNavBar(
         currentIndex: _currentIndex,
@@ -52,5 +62,11 @@ class _MainPageState extends State<MainPage> {
         },
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    AudioPlayerService.dispose();
+    super.dispose();
   }
 }

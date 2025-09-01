@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:phonkers/data/service/audio_player_service.dart';
+import 'package:phonkers/data/service/spotify_api_service.dart';
+import 'package:phonkers/data/service/youtube_api_service.dart';
 import 'package:phonkers/firebase_auth_service/auth_state_manager.dart';
 import 'package:phonkers/view/pages/auth_page.dart';
 import 'package:phonkers/view/pages/main_page.dart';
@@ -11,6 +14,22 @@ import 'firebase_options.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  await SpotifyApiService.initialize();
+
+  YouTubeApiService.initialize('AIzaSyAZpUPBGz__wbSo2mRKx1ZbnBIFzj8w84g');
+
+  // Test Spotify connection
+  final isWorking = await SpotifyApiService.testConnection();
+  print('Spotify API working: $isWorking');
+
+  final youtubeWorking = await YouTubeApiService.testConnection();
+  print('YouTube API working: $youtubeWorking');
+
+  // Initialize Audio Player
+  await AudioPlayerService.initialize();
+  print('Audio app service initialized!');
+
   runApp(const MyApp());
 }
 
