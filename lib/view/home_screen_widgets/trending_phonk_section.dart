@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:phonkers/data/service/phonk_service.dart';
+import 'package:phonkers/view/widget/network_widget/network_aware_mixin.dart';
 import 'package:phonkers/view/widget/trending_phonk_card.dart';
 import 'package:phonkers/data/model/phonk.dart';
 import 'package:phonkers/data/service/audio_player_service.dart';
@@ -11,11 +12,13 @@ class TrendingSection extends StatefulWidget {
   State<TrendingSection> createState() => _TrendingSectionState();
 }
 
-class _TrendingSectionState extends State<TrendingSection> {
+class _TrendingSectionState extends State<TrendingSection>
+    with NetworkAwareMixin {
   final PhonkService _phonkService = PhonkService();
   List<Phonk> _trendingPhonks = [];
   bool _isLoading = true;
   String _error = '';
+  bool _isNetworkError = false;
 
   @override
   void initState() {
@@ -28,7 +31,21 @@ class _TrendingSectionState extends State<TrendingSection> {
       setState(() {
         _isLoading = true;
         _error = '';
+        _isNetworkError = false;
       });
+
+      // Check internet connection first
+      final hasInternet = await hasInternetConnection();
+      if (!hasInternet) {
+        if (mounted) {
+          setState(() {
+            _error = 'No internet connection';
+            _isNetworkError = true;
+            _isLoading = false;
+          });
+        }
+        return;
+      }
 
       final phonks = await _phonkService.getTrendingPhonks(limit: 10);
 
@@ -40,8 +57,13 @@ class _TrendingSectionState extends State<TrendingSection> {
       }
     } catch (e) {
       if (mounted) {
+        // Check if it's a network-related error
+        final hasInternet = await hasInternetConnection();
         setState(() {
-          _error = 'Failed to load trending phonks';
+          _error = hasInternet
+              ? 'Failed to load trending phonks'
+              : 'No internet connection';
+          _isNetworkError = !hasInternet;
           _isLoading = false;
         });
       }
@@ -98,28 +120,12 @@ class _TrendingSectionState extends State<TrendingSection> {
     }
 
     if (_error.isNotEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.error_outline, color: Colors.red[300], size: 32),
-            const SizedBox(height: 8),
-            Text(
-              _error,
-              style: TextStyle(color: Colors.red[300], fontSize: 14),
-            ),
-            const SizedBox(height: 8),
-            ElevatedButton(
-              onPressed: _loadTrendingPhonks,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.purple,
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('Retry'),
-            ),
-          ],
-        ),
-      );
+      return _isNetworkError
+          ? buildNoInternetError(
+              onRetry: _loadTrendingPhonks,
+              message: 'Connect to internet to see trending phonks',
+            )
+          : _buildGenericError();
     }
 
     if (_trendingPhonks.isEmpty) {
@@ -155,23 +161,64 @@ class _TrendingSectionState extends State<TrendingSection> {
         final phonk = _trendingPhonks[index];
         return TrendingPhonkCard(
           phonk: phonk,
-          onTap: () {
-            // Handle phonk tap - play the track
-            _handlePhonkTap(phonk);
-          },
+          onTap: () => _handlePhonkTap(phonk),
         );
       },
     );
   }
 
+  Widget _buildGenericError() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.error_outline, color: Colors.red[300], size: 32),
+          const SizedBox(height: 8),
+          Text(
+            _error,
+            style: TextStyle(color: Colors.red[300], fontSize: 14),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8),
+          ElevatedButton(
+            onPressed: _loadTrendingPhonks,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.purple,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Retry'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _handlePhonkTap(Phonk phonk) async {
+    // Check internet connection before trying to play
+    final result = await executeWithNetworkCheck(
+      action: () async {
+        final playResult = await AudioPlayerService.playPhonk(phonk);
+        print('Play result in handlePhonkTap: $playResult');
+        return playResult;
+      },
+      onNoInternet: () {
+        // Show a different message for audio playback
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Icons.wifi_off, color: Colors.white),
+                SizedBox(width: 12),
+                Text('Internet connection required for audio playback'),
+              ],
+            ),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      },
+    );
 
-    final response = await AudioPlayerService.playPhonk(phonk);
-    print('Play result in handkePhonkTap: $response');
-
-    final result = await AudioPlayerService.playPhonk(phonk);
-
-    if (!mounted) return;
+    if (result == null || !mounted) return;
 
     switch (result) {
       case PlayResult.success:
@@ -189,10 +236,11 @@ class _TrendingSectionState extends State<TrendingSection> {
           ),
         );
         break;
+
       case PlayResult.loading:
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Row(
+            content: const Row(
               children: [
                 SizedBox(
                   width: 20,
@@ -200,7 +248,7 @@ class _TrendingSectionState extends State<TrendingSection> {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 ),
                 SizedBox(width: 10),
-                Text('Loading audio in TPSD...'),
+                Text('Loading audio...'),
               ],
             ),
             backgroundColor: Colors.blue,
@@ -230,7 +278,7 @@ class _TrendingSectionState extends State<TrendingSection> {
       builder: (BuildContext context) {
         return AlertDialog(
           backgroundColor: Colors.grey[900],
-          title: Text(
+          title: const Text(
             'No Preview Available',
             style: TextStyle(color: Colors.white),
           ),
@@ -240,13 +288,13 @@ class _TrendingSectionState extends State<TrendingSection> {
             children: [
               Text(
                 '${phonk.title}\nby ${phonk.artist}',
-                style: TextStyle(
+                style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              SizedBox(height: 16),
-              Text(
+              const SizedBox(height: 16),
+              const Text(
                 'This track doesn\'t have a preview available. You can listen to the full track on:',
                 style: TextStyle(color: Colors.white70),
               ),
@@ -257,17 +305,16 @@ class _TrendingSectionState extends State<TrendingSection> {
               TextButton.icon(
                 onPressed: () {
                   Navigator.pop(context);
-                  // You can add URL launcher here later
                   print('Opening Spotify: ${phonk.spotifyUrl}');
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
+                    const SnackBar(
                       content: Text('Opening in Spotify...'),
                       backgroundColor: Colors.green,
                     ),
                   );
                 },
-                icon: Icon(Icons.music_note, color: Colors.green),
-                label: Text(
+                icon: const Icon(Icons.music_note, color: Colors.green),
+                label: const Text(
                   'Open in Spotify',
                   style: TextStyle(color: Colors.green),
                 ),
@@ -277,21 +324,24 @@ class _TrendingSectionState extends State<TrendingSection> {
                 Navigator.pop(context);
                 print('Searching YouTube: ${phonk.youtubeUrl}');
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
+                  const SnackBar(
                     content: Text('Opening YouTube search...'),
                     backgroundColor: Colors.red,
                   ),
                 );
               },
-              icon: Icon(Icons.video_library, color: Colors.red),
-              label: Text(
+              icon: const Icon(Icons.video_library, color: Colors.red),
+              label: const Text(
                 'Search YouTube',
                 style: TextStyle(color: Colors.red),
               ),
             ),
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text('Cancel', style: TextStyle(color: Colors.white70)),
+              child: const Text(
+                'Cancel',
+                style: TextStyle(color: Colors.white70),
+              ),
             ),
           ],
         );

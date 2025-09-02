@@ -354,7 +354,7 @@ class _TrendingPhonkCardState extends State<TrendingPhonkCard> {
       }
 
       // Start delayed loading message timer
-      _loadingMessageTimer = Timer(const Duration(seconds: 3), () {
+      _loadingMessageTimer = Timer(const Duration(seconds: 4), () {
         if (mounted && AudioPlayerService.isLoading) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(

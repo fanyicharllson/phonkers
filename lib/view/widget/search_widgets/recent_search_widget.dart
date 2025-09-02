@@ -35,9 +35,17 @@ class RecentSearchesWidget extends StatelessWidget {
           children: [
             _buildHeader(context),
             const SizedBox(height: 12),
-            ...recentSearches
-                .map((query) => _buildSearchItem(context, query))
-                ,
+
+            Flexible(
+              child: ListView.builder(
+                shrinkWrap: true,
+                physics: const BouncingScrollPhysics(),
+                itemCount: recentSearches.length,
+                itemBuilder: (context, index) {
+                  return _buildSearchItem(context, recentSearches[index]);
+                },
+              ),
+            ),
           ],
         ),
       ),

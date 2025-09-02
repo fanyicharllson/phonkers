@@ -127,7 +127,7 @@ class LoadingScreen extends StatelessWidget {
               const SizedBox(height: 20),
 
               Text(
-                "Preparing, please wait...",
+                "Phonker Preparing, please wait...",
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.7),
                   fontSize: 16,

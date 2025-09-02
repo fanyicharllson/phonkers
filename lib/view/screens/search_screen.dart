@@ -200,7 +200,10 @@ class _SearchScreenState extends State<SearchScreen>
     if (resultCount > 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Found $resultCount results'),
+          content: Text(
+            'Found $resultCount results',
+            style: TextStyle(color: Colors.white),
+          ),
           backgroundColor: Colors.purple.withValues(alpha: 0.8),
           duration: const Duration(seconds: 2),
         ),
@@ -211,7 +214,10 @@ class _SearchScreenState extends State<SearchScreen>
   void _showErrorSnackBar(String error) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Search failed: $error'),
+        content: Text(
+          'Search failed: $error',
+          style: TextStyle(color: Colors.white),
+        ),
         backgroundColor: Colors.red.withValues(alpha: 0.8),
         duration: const Duration(seconds: 3),
       ),
@@ -299,6 +305,7 @@ class _SearchScreenState extends State<SearchScreen>
       _hasSearched = false;
       _currentQuery = '';
     });
+    AudioPlayerService.stop();
   }
 
   void showQuotaDialog() {
@@ -321,13 +328,6 @@ class _SearchScreenState extends State<SearchScreen>
         ],
       ),
     );
-  }
-
-  // Helper to check if a track is currently playing
-  bool isTrackCurrentlyPlaying(Map<String, dynamic> track) {
-    final videoId = track['id']?['videoId'] ?? track['id'];
-    final currentPhonk = AudioPlayerService.currentPhonk;
-    return currentPhonk?.id == videoId;
   }
 
   @override
@@ -466,7 +466,7 @@ class _SearchScreenState extends State<SearchScreen>
                   ),
                 ),
                 child: Text(
-                  'Try: "KORDHELL - Murder Plot"',
+                  'Try: "ICEDMANE - FUNK CRIMINAL"',
                   style: TextStyle(
                     color: Colors.purple.withValues(alpha: 0.9),
                     fontSize: 14,

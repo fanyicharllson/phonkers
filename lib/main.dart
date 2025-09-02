@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:phonkers/data/service/audio_player_service.dart';
 import 'package:phonkers/data/service/spotify_api_service.dart';
 import 'package:phonkers/data/service/youtube_api_service.dart';
+import 'package:phonkers/data/service/network_status_service.dart';
 import 'package:phonkers/firebase_auth_service/auth_state_manager.dart';
 import 'package:phonkers/view/pages/auth_page.dart';
 import 'package:phonkers/view/pages/main_page.dart';
@@ -9,26 +10,34 @@ import 'package:phonkers/view/pages/welcome_info_page.dart';
 import 'package:phonkers/view/pages/welcome_page.dart';
 
 import 'package:firebase_core/firebase_core.dart';
-import 'package:phonkers/view/widget/network_status_listener.dart';
+import 'package:phonkers/view/widget/network_widget/network_status_listener.dart';
 import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Firebase
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
+  // Initialize Network Service first (it's a singleton)
+  final networkService = NetworkStatusService();
+  await networkService.initialize();
+
+  // Initialize other services
   await SpotifyApiService.initialize();
-
   YouTubeApiService.initialize();
-
-  // Test Spotify connection
-  final isWorking = await SpotifyApiService.testConnection();
-  print('Spotify API working: $isWorking');
-
-  final youtubeWorking = await YouTubeApiService.testConnection();
-  print('YouTube API working: $youtubeWorking');
-
-  // Initialize Audio Player
   await AudioPlayerService.initialize();
+
+  // Test API connections (with network check)
+  if (networkService.isOnline) {
+    final isSpotifyWorking = await SpotifyApiService.testConnection();
+    final isYouTubeWorking = await YouTubeApiService.testConnection();
+    print('Spotify API working: $isSpotifyWorking');
+    print('YouTube API working: $isYouTubeWorking');
+  } else {
+    print('No internet connection - skipping API tests');
+  }
+
   print('Audio app service initialized!');
 
   runApp(const MyApp());
@@ -42,7 +51,8 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
-  // This widget is the root of your application.
+  final NetworkStatusService _networkService = NetworkStatusService();
+
   @override
   void initState() {
     super.initState();
@@ -52,6 +62,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    // Don't dispose the network service here as it's a singleton
     super.dispose();
   }
 
@@ -59,21 +70,20 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     switch (state) {
       case AppLifecycleState.resumed:
-        // App is back in foreground - refresh if needed
+        // App is back in foreground - refresh network status
         print('App resumed');
+        _networkService.refreshStatus();
         break;
       case AppLifecycleState.paused:
-        // App is in background
         print('App paused');
         break;
       case AppLifecycleState.detached:
-        // App is being killed
+        // App is being killed - clean up
+        _networkService.dispose();
         break;
       case AppLifecycleState.inactive:
-        // App is inactive
         break;
       case AppLifecycleState.hidden:
-        // App is hidden
         break;
     }
   }
@@ -81,6 +91,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     return NetworkStatusListener(
+      showInitialStatus: false, 
       child: MaterialApp(
         title: 'Phonkers',
         debugShowCheckedModeBanner: false,
