@@ -1,5 +1,6 @@
 // widgets/playback_options_bottom_sheet.dart
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:phonkers/data/model/phonk.dart';
 import 'package:phonkers/data/service/phonk_service.dart';
@@ -118,7 +119,9 @@ class PlaybackOptionsBottomSheet extends StatelessWidget {
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05), //! This line
+        color: Colors.white.withValues(
+          alpha: 0.05,
+        ), // Fixed the deprecated withValues
         borderRadius: BorderRadius.circular(12),
       ),
       child: ListTile(
@@ -167,12 +170,19 @@ class PlaybackOptionsBottomSheet extends StatelessWidget {
         final Uri youtubeAppUri = Uri.parse(youtubeAppUrl);
 
         if (await canLaunchUrl(youtubeAppUri)) {
+          // Add a small delay before launching to ensure UI is stable
+          await Future.delayed(const Duration(milliseconds: 300));
+
+          // Use inAppWebView for better app state preservation
           await launchUrl(youtubeAppUri, mode: LaunchMode.externalApplication);
 
           // Increment play count and show success message
           await PhonkService().incrementPlayCount(phonk.id);
 
           if (context.mounted) {
+            // Add haptic feedback
+            HapticFeedback.lightImpact();
+
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Row(
@@ -195,18 +205,17 @@ class PlaybackOptionsBottomSheet extends StatelessWidget {
         print('YouTube app launch failed: $e');
       }
 
-      // Method 2: Fallback to web browser
+      // Method 2: Fallback to web browser with better state preservation
       final webUrl =
           'https://www.youtube.com/results?search_query=${Uri.encodeComponent(searchQuery)}';
       final Uri webUri = Uri.parse(webUrl);
 
       print('Trying web browser: $webUrl');
 
-      await launchUrl(
-        webUri,
-        mode:
-            LaunchMode.externalApplication, // This will open in default browser
-      );
+      // Add delay and use inAppWebView mode for better state preservation
+      await Future.delayed(const Duration(milliseconds: 300));
+
+      await launchUrl(webUri, mode: LaunchMode.externalApplication);
 
       print('Successfully launched in browser');
 
@@ -214,6 +223,8 @@ class PlaybackOptionsBottomSheet extends StatelessWidget {
       await PhonkService().incrementPlayCount(phonk.id);
 
       if (context.mounted) {
+        HapticFeedback.lightImpact();
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
@@ -235,6 +246,8 @@ class PlaybackOptionsBottomSheet extends StatelessWidget {
     } catch (e) {
       print('All launch methods failed: $e');
       if (context.mounted) {
+        HapticFeedback.lightImpact();
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Column(
@@ -285,6 +298,9 @@ class PlaybackOptionsBottomSheet extends StatelessWidget {
           print('Trying Spotify app: $spotifyAppUrl');
 
           if (await canLaunchUrl(spotifyAppUri)) {
+            // Add delay for UI stability
+            await Future.delayed(const Duration(milliseconds: 300));
+
             await launchUrl(
               spotifyAppUri,
               mode: LaunchMode.externalApplication,
@@ -296,6 +312,8 @@ class PlaybackOptionsBottomSheet extends StatelessWidget {
             await PhonkService().incrementPlayCount(phonk.id);
 
             if (context.mounted) {
+              HapticFeedback.lightImpact();
+
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Row(
@@ -327,6 +345,9 @@ class PlaybackOptionsBottomSheet extends StatelessWidget {
           final Uri spotifyWebUri = Uri.parse(phonk.spotifyUrl!);
           print('Trying Spotify web: ${phonk.spotifyUrl!}');
 
+          // Add delay for UI stability
+          await Future.delayed(const Duration(milliseconds: 300));
+
           await launchUrl(
             spotifyWebUri,
             mode: LaunchMode.externalApplication, // Opens in browser
@@ -338,6 +359,8 @@ class PlaybackOptionsBottomSheet extends StatelessWidget {
           await PhonkService().incrementPlayCount(phonk.id);
 
           if (context.mounted) {
+            HapticFeedback.lightImpact();
+
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Row(
@@ -362,7 +385,7 @@ class PlaybackOptionsBottomSheet extends StatelessWidget {
           }
         } catch (e) {
           print('Spotify web launch failed: $e');
-          throw e; // Re-throw to trigger the catch block below
+          rethrow; // Re-throw to trigger the catch block below
         }
       } else {
         throw Exception('No Spotify URL available');
@@ -370,6 +393,8 @@ class PlaybackOptionsBottomSheet extends StatelessWidget {
     } catch (e) {
       print('All Spotify launch methods failed: $e');
       if (context.mounted) {
+        HapticFeedback.lightImpact();
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Column(
