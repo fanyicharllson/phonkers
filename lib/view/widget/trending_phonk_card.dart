@@ -1,4 +1,3 @@
-// widgets/trending_phonk_card.dart
 import 'dart:async';
 
 import 'package:flutter/material.dart';
