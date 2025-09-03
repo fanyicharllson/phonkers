@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:phonkers/data/model/phonk.dart';
 import 'package:phonkers/data/service/audio_player_service.dart';
+import 'dart:async';
 
-class SearchResultItemWidget extends StatelessWidget {
+class SearchResultItemWidget extends StatefulWidget {
   final Map<String, dynamic> track;
   final Function(Map<String, dynamic>) onPlayTrack;
 
@@ -13,56 +14,131 @@ class SearchResultItemWidget extends StatelessWidget {
   });
 
   @override
+  State<SearchResultItemWidget> createState() => _SearchResultItemWidgetState();
+}
+
+class _SearchResultItemWidgetState extends State<SearchResultItemWidget> {
+  late StreamSubscription<Phonk?> _currentPhonkSubscription;
+  late StreamSubscription<bool> _isPlayingSubscription;
+  late StreamSubscription<bool> _isLoadingSubscription;
+  late StreamSubscription<Duration> _positionSubscription;
+
+  // Local state to maintain playing status
+  Phonk? _currentPhonk;
+  bool _isPlaying = false;
+  bool _isLoading = false;
+  Duration _position = Duration.zero;
+
+  String? _videoId;
+  bool _isCurrentlyPlaying = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _videoId = widget.track['id']?['videoId'] ?? widget.track['id'];
+    _initializeStreams();
+    _updateCurrentPlayingState();
+  }
+
+  void _initializeStreams() {
+    // Subscribe to all audio service streams
+    _currentPhonkSubscription = AudioPlayerService.currentPhonkStream.listen((phonk) {
+      if (mounted) {
+        setState(() {
+          _currentPhonk = phonk;
+          _updateCurrentPlayingState();
+        });
+      }
+    });
+
+    _isPlayingSubscription = AudioPlayerService.isPlayingStream.listen((playing) {
+      if (mounted) {
+        setState(() {
+          _isPlaying = playing;
+        });
+      }
+    });
+
+    _isLoadingSubscription = AudioPlayerService.isLoadingStream.listen((loading) {
+      if (mounted) {
+        setState(() {
+          _isLoading = loading;
+        });
+      }
+    });
+
+    _positionSubscription = AudioPlayerService.positionStream.listen((position) {
+      if (mounted && _isCurrentlyPlaying) {
+        setState(() {
+          _position = position;
+        });
+      }
+    });
+
+    // Get initial state
+    _currentPhonk = AudioPlayerService.currentPhonk;
+    _isPlaying = AudioPlayerService.isPlaying;
+    _isLoading = AudioPlayerService.isLoading;
+    _position = AudioPlayerService.currentPosition;
+    _updateCurrentPlayingState();
+  }
+
+  void _updateCurrentPlayingState() {
+    final wasPlaying = _isCurrentlyPlaying;
+    _isCurrentlyPlaying = _currentPhonk?.id == _videoId;
+    
+    // If the playing state changed, trigger a rebuild
+    if (wasPlaying != _isCurrentlyPlaying) {
+      if (mounted) {
+        setState(() {});
+      }
+    }
+  }
+
+  @override
+  void didUpdateWidget(SearchResultItemWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    
+    // Update video ID if track changed
+    final newVideoId = widget.track['id']?['videoId'] ?? widget.track['id'];
+    if (_videoId != newVideoId) {
+      _videoId = newVideoId;
+      _updateCurrentPlayingState();
+    }
+  }
+
+  @override
+  void dispose() {
+    _currentPhonkSubscription.cancel();
+    _isPlayingSubscription.cancel();
+    _isLoadingSubscription.cancel();
+    _positionSubscription.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final snippet = track['snippet'] ?? {};
+    final snippet = widget.track['snippet'] ?? {};
     final title = snippet['title'] ?? 'Unknown Title';
     final channelTitle = snippet['channelTitle'] ?? 'Unknown Artist';
     final thumbnailUrl =
         snippet['thumbnails']?['medium']?['url'] ??
         snippet['thumbnails']?['default']?['url'];
     final description = snippet['description'] ?? '';
-    final videoId = track['id']?['videoId'] ?? track['id'];
 
-    return StreamBuilder<Phonk?>(
-      stream: AudioPlayerService.currentPhonkStream,
-      builder: (context, currentPhonkSnapshot) {
-        final currentPhonk = currentPhonkSnapshot.data;
-        final isCurrentlyPlaying = currentPhonk?.id == videoId;
+    // Determine loading state for this specific item
+    final showLoadingForThis = _isLoading && _isCurrentlyPlaying;
 
-        return StreamBuilder<bool>(
-          stream: AudioPlayerService.isPlayingStream,
-          builder: (context, playingSnapshot) {
-            final isPlaying = playingSnapshot.data ?? false;
-
-            return StreamBuilder<bool>(
-              stream: AudioPlayerService.isLoadingStream,
-              builder: (context, loadingSnapshot) {
-                final isLoading = loadingSnapshot.data ?? false;
-                final showLoadingForThis = isLoading && isCurrentlyPlaying;
-
-                return StreamBuilder<Duration>(
-                  stream: AudioPlayerService.positionStream,
-                  builder: (context, positionSnapshot) {
-                    final position = positionSnapshot.data ?? Duration.zero;
-
-                    return _buildListTile(
-                      title: title,
-                      channelTitle: channelTitle,
-                      thumbnailUrl: thumbnailUrl,
-                      description: description,
-                      isCurrentlyPlaying: isCurrentlyPlaying,
-                      isPlaying: isPlaying,
-                      isLoading: showLoadingForThis,
-                      position: position,
-                      context: context,
-                    );
-                  },
-                );
-              },
-            );
-          },
-        );
-      },
+    return _buildListTile(
+      title: title,
+      channelTitle: channelTitle,
+      thumbnailUrl: thumbnailUrl,
+      description: description,
+      isCurrentlyPlaying: _isCurrentlyPlaying,
+      isPlaying: _isPlaying,
+      isLoading: showLoadingForThis,
+      position: _position,
+      context: context,
     );
   }
 
@@ -252,7 +328,7 @@ class SearchResultItemWidget extends StatelessWidget {
     bool isPlaying,
     bool isLoading,
   ) {
-    if (track['isFallback'] == true) {
+    if (widget.track['isFallback'] == true) {
       return const Icon(Icons.open_in_new, color: Colors.orange, size: 20);
     }
 
@@ -284,7 +360,7 @@ class SearchResultItemWidget extends StatelessWidget {
       );
     }
 
-    return Icon(Icons.play_circle_filled, color: Colors.white70, size: 28);
+    return const Icon(Icons.play_circle_filled, color: Colors.white70, size: 28);
   }
 
   Widget _buildProgressIndicator(Duration position) {
@@ -305,9 +381,9 @@ class SearchResultItemWidget extends StatelessWidget {
                 style: const TextStyle(color: Colors.white70, fontSize: 10),
               ),
               const Spacer(),
-              Text(
+              const Text(
                 '0:30', // YouTube preview duration
-                style: const TextStyle(color: Colors.white70, fontSize: 10),
+                style: TextStyle(color: Colors.white70, fontSize: 10),
               ),
             ],
           ),
@@ -315,7 +391,7 @@ class SearchResultItemWidget extends StatelessWidget {
           LinearProgressIndicator(
             value: progress.clamp(0.0, 1.0),
             backgroundColor: Colors.white.withValues(alpha: 0.2),
-            valueColor: AlwaysStoppedAnimation<Color>(Colors.purple),
+            valueColor: const AlwaysStoppedAnimation<Color>(Colors.purple),
             minHeight: 2,
           ),
         ],
@@ -329,7 +405,7 @@ class SearchResultItemWidget extends StatelessWidget {
     if (isCurrentlyPlaying) {
       _handlePlayPause(isPlaying);
     } else {
-      onPlayTrack(track);
+      widget.onPlayTrack(widget.track);
     }
   }
 

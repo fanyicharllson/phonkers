@@ -31,6 +31,19 @@ class AudioPlayerService {
   static Stream<bool> get isLoadingStream => _isLoadingController.stream;
   static Stream<Duration> get positionStream => _positionController.stream;
 
+  static Duration get currentPosition =>
+      _audioPlayer.state == PlayerState.playing ||
+          _audioPlayer.state == PlayerState.paused
+      ? Duration
+            .zero // Will be updated by the stream
+      : Duration.zero;
+
+  // Better approach - add a private variable to track current position
+  static Duration _currentPosition = Duration.zero;
+
+  // Add this getter instead
+  static Duration get audiocurrentPosition => _currentPosition;
+
   static Phonk? get currentPhonk => _currentPhonk;
   static bool get isPlaying => _isPlaying;
   static bool get isLoading => _isLoading;
@@ -49,11 +62,13 @@ class AudioPlayerService {
       } else if (state == PlayerState.stopped && !_isInitiatingPlayback) {
         // Only stop loading on stopped if we're not in the middle of initiating playback
         _setLoadingState(false);
+        _currentPosition = Duration.zero;
       }
       // Don't change loading state for paused - user might have paused during loading
     });
 
     _positionSubscription = _audioPlayer.onPositionChanged.listen((position) {
+      _currentPosition = position;
       _positionController.add(position);
     });
 
@@ -175,6 +190,7 @@ class AudioPlayerService {
   static Future<void> stop() async {
     await _audioPlayer.stop();
     _currentPhonk = null;
+    _currentPosition = Duration.zero;
     _currentPhonkController.add(null);
     _isInitiatingPlayback = false;
     _setLoadingState(false);

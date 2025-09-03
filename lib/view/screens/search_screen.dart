@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:phonkers/view/widget/network_widget/network_aware_mixin.dart';
 import 'package:phonkers/view/widget/search_widgets/recent_search_widget.dart';
 import 'package:phonkers/view/widget/search_widgets/search_bar_widget.dart';
 import 'package:phonkers/view/widget/search_widgets/search_button_widget.dart';
@@ -17,7 +18,7 @@ class SearchScreen extends StatefulWidget {
 }
 
 class _SearchScreenState extends State<SearchScreen>
-    with TickerProviderStateMixin {
+    with TickerProviderStateMixin, NetworkAwareMixin {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
 
@@ -26,6 +27,8 @@ class _SearchScreenState extends State<SearchScreen>
   bool _isSearching = false;
   bool _hasSearched = false;
   String _currentQuery = '';
+  String _error = '';
+  bool _isNetworkError = false;
 
   // Remove complex state tracking variables
   late AnimationController _fadeController;
@@ -143,9 +146,24 @@ class _SearchScreenState extends State<SearchScreen>
       _isSearching = true;
       _hasSearched = false;
       _currentQuery = query;
+      _error = '';
+      _isNetworkError = false;
     });
 
     HapticFeedback.lightImpact();
+
+    final hasInternet = await hasInternetConnection();
+    if (!hasInternet) {
+      if (mounted) {
+        setState(() {
+          _error = 'No internet connection';
+          _isNetworkError = true;
+          _isSearching = false;
+          _hasSearched = false;
+        });
+      }
+      return;
+    }
 
     try {
       final (artist, title) = _parseSearchQuery(query);
@@ -170,7 +188,12 @@ class _SearchScreenState extends State<SearchScreen>
       }
     } catch (e) {
       if (mounted) {
+        final hasInternet = await hasInternetConnection();
         setState(() {
+          _error = hasInternet
+              ? 'Failed to load trending phonks'
+              : 'No internet connection';
+          _isNetworkError = !hasInternet;
           _searchResults = [];
           _isSearching = false;
           _hasSearched = true;
@@ -348,7 +371,7 @@ class _SearchScreenState extends State<SearchScreen>
           title: FadeTransition(
             opacity: _fadeAnimation,
             child: const Text(
-              'Search Music',
+              'Search Phonk Songs',
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 24,
@@ -392,7 +415,9 @@ class _SearchScreenState extends State<SearchScreen>
   }
 
   Widget _buildMainContent() {
-    if (_hasSearched) {
+    if (_error.isNotEmpty || _isNetworkError) {
+      return buildNoInternetError(onRetry: performSearch, message: _error);
+    } else if (_hasSearched) {
       return SearchResultsWidget(
         searchResults: _searchResults,
         hasSearched: _hasSearched,

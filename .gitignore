@@ -46,3 +46,6 @@ app.*.map.json
 
 android/app/google-services.json
 lib/firebase_options.dart
+lib/spam.txt
+lib/data/service/youtube_api_service.dart
+lib/data/service/spotify_api_service.dart
