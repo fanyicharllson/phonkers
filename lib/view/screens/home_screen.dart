@@ -1,4 +1,4 @@
-import 'package:firebase_auth/firebase_auth.dart';
+// import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:phonkers/view/home_screen_widgets/discover_section.dart';
 import 'package:phonkers/view/home_screen_widgets/featured_phonk_card.dart';
@@ -23,7 +23,7 @@ class _HomeScreenState extends State<HomeScreen>
   Widget build(BuildContext context) {
     super.build(context);
 
-    final User? user = FirebaseAuth.instance.currentUser;
+    // final User? user = FirebaseAuth.instance.currentUser;
 
     return Container(
       decoration: const BoxDecoration(
@@ -40,7 +40,7 @@ class _HomeScreenState extends State<HomeScreen>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Header
-              HomeHeader(user: user),
+              HomeHeader(),
 
               const SizedBox(height: 24),
 

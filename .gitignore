@@ -49,3 +49,4 @@ lib/firebase_options.dart
 lib/spam.txt
 lib/data/service/youtube_api_service.dart
 lib/data/service/spotify_api_service.dart
+lib/cloudinary/cloudinary_service.dart

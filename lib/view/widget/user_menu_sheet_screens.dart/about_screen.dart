@@ -138,7 +138,7 @@ class AboutScreen extends StatelessWidget {
 
             // Copyright
             Text(
-              '© ${DateTime.now()} Phonkers. All rights reserved.',
+              '© ${DateTime.now().year} Phonkers. All rights reserved.',
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.5),
                 fontSize: 12,

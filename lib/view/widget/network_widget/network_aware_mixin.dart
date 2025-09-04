@@ -25,7 +25,7 @@ mixin NetworkAwareMixin<T extends StatefulWidget> on State<T> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.wifi_off, color: Colors.orange[300], size: 48),
+          Icon(Icons.wifi_off, color: Colors.deepPurple[300], size: 48),
           const SizedBox(height: 16),
           Text(
             message,
@@ -41,7 +41,7 @@ mixin NetworkAwareMixin<T extends StatefulWidget> on State<T> {
             ElevatedButton.icon(
               onPressed: onRetry,
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.orange,
+                backgroundColor: Colors.deepPurple,
                 foregroundColor: Colors.white,
               ),
               icon: const Icon(Icons.refresh),
@@ -70,7 +70,7 @@ mixin NetworkAwareMixin<T extends StatefulWidget> on State<T> {
                 Text('No internet connection'),
               ],
             ),
-            backgroundColor: Colors.orange,
+            backgroundColor: Colors.deepPurple,
           ),
         );
       }

@@ -264,6 +264,17 @@ class _SearchScreenState extends State<SearchScreen>
       return;
     }
 
+    final hasInternet = await hasInternetConnection();
+    if (!hasInternet) {
+      if (mounted) {
+        setState(() {
+          _error = 'No internet connection! Connect to the internet to play $title';
+          _isNetworkError = true;
+        });
+      }
+      return;
+    }
+
     try {
       final tempPhonk = Phonk(
         id: videoId,
@@ -310,6 +321,7 @@ class _SearchScreenState extends State<SearchScreen>
         throw Exception('Failed to play track');
       }
     } catch (e) {
+      print('Could not play: ${e.toString()}');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
