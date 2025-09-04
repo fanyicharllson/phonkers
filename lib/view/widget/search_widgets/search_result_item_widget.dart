@@ -3,6 +3,8 @@ import 'package:phonkers/data/model/phonk.dart';
 import 'package:phonkers/data/service/audio_player_service.dart';
 import 'dart:async';
 
+import 'package:phonkers/view/widget/network_widget/network_aware_mixin.dart';
+
 class SearchResultItemWidget extends StatefulWidget {
   final Map<String, dynamic> track;
   final Function(Map<String, dynamic>) onPlayTrack;
@@ -17,7 +19,8 @@ class SearchResultItemWidget extends StatefulWidget {
   State<SearchResultItemWidget> createState() => _SearchResultItemWidgetState();
 }
 
-class _SearchResultItemWidgetState extends State<SearchResultItemWidget> {
+class _SearchResultItemWidgetState extends State<SearchResultItemWidget>
+    with NetworkAwareMixin {
   late StreamSubscription<Phonk?> _currentPhonkSubscription;
   late StreamSubscription<bool> _isPlayingSubscription;
   late StreamSubscription<bool> _isLoadingSubscription;
@@ -42,7 +45,9 @@ class _SearchResultItemWidgetState extends State<SearchResultItemWidget> {
 
   void _initializeStreams() {
     // Subscribe to all audio service streams
-    _currentPhonkSubscription = AudioPlayerService.currentPhonkStream.listen((phonk) {
+    _currentPhonkSubscription = AudioPlayerService.currentPhonkStream.listen((
+      phonk,
+    ) {
       if (mounted) {
         setState(() {
           _currentPhonk = phonk;
@@ -51,7 +56,9 @@ class _SearchResultItemWidgetState extends State<SearchResultItemWidget> {
       }
     });
 
-    _isPlayingSubscription = AudioPlayerService.isPlayingStream.listen((playing) {
+    _isPlayingSubscription = AudioPlayerService.isPlayingStream.listen((
+      playing,
+    ) {
       if (mounted) {
         setState(() {
           _isPlaying = playing;
@@ -59,7 +66,9 @@ class _SearchResultItemWidgetState extends State<SearchResultItemWidget> {
       }
     });
 
-    _isLoadingSubscription = AudioPlayerService.isLoadingStream.listen((loading) {
+    _isLoadingSubscription = AudioPlayerService.isLoadingStream.listen((
+      loading,
+    ) {
       if (mounted) {
         setState(() {
           _isLoading = loading;
@@ -67,7 +76,9 @@ class _SearchResultItemWidgetState extends State<SearchResultItemWidget> {
       }
     });
 
-    _positionSubscription = AudioPlayerService.positionStream.listen((position) {
+    _positionSubscription = AudioPlayerService.positionStream.listen((
+      position,
+    ) {
       if (mounted && _isCurrentlyPlaying) {
         setState(() {
           _position = position;
@@ -86,7 +97,7 @@ class _SearchResultItemWidgetState extends State<SearchResultItemWidget> {
   void _updateCurrentPlayingState() {
     final wasPlaying = _isCurrentlyPlaying;
     _isCurrentlyPlaying = _currentPhonk?.id == _videoId;
-    
+
     // If the playing state changed, trigger a rebuild
     if (wasPlaying != _isCurrentlyPlaying) {
       if (mounted) {
@@ -98,7 +109,7 @@ class _SearchResultItemWidgetState extends State<SearchResultItemWidget> {
   @override
   void didUpdateWidget(SearchResultItemWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    
+
     // Update video ID if track changed
     final newVideoId = widget.track['id']?['videoId'] ?? widget.track['id'];
     if (_videoId != newVideoId) {
@@ -360,7 +371,11 @@ class _SearchResultItemWidgetState extends State<SearchResultItemWidget> {
       );
     }
 
-    return const Icon(Icons.play_circle_filled, color: Colors.white70, size: 28);
+    return const Icon(
+      Icons.play_circle_filled,
+      color: Colors.white70,
+      size: 28,
+    );
   }
 
   Widget _buildProgressIndicator(Duration position) {
@@ -399,12 +414,34 @@ class _SearchResultItemWidgetState extends State<SearchResultItemWidget> {
     );
   }
 
-  void _handleTap(bool isCurrentlyPlaying, bool isPlaying, bool isLoading) {
-    if (isLoading) return; // Don't allow interactions while loading
+  Future<void> _handleTap(
+    bool isCurrentlyPlaying,
+    bool isPlaying,
+    bool isLoading,
+  ) async {
+    if (isLoading) return;
 
     if (isCurrentlyPlaying) {
       _handlePlayPause(isPlaying);
     } else {
+      // Immediately show loading before service updates
+      if (mounted) {
+        setState(() {
+          _isLoading = true;
+          _isCurrentlyPlaying = true;
+        });
+      }
+
+      final hasInternet = await hasInternetConnection();
+      if (!hasInternet) {
+        if (mounted) {
+          _showMessage(
+            "You lost connection! Please verify your network connection and try again.",
+          );
+        }
+        return;
+      }
+
       widget.onPlayTrack(widget.track);
     }
   }
@@ -415,5 +452,22 @@ class _SearchResultItemWidgetState extends State<SearchResultItemWidget> {
     } else {
       AudioPlayerService.resume();
     }
+  }
+
+  void _showMessage(String message) {
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+        _isCurrentlyPlaying = false;
+      });
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message, style: TextStyle(color: Colors.white)),
+        backgroundColor: Colors.deepPurple.withValues(alpha: 0.8),
+        behavior: SnackBarBehavior.floating,
+        duration: Duration(seconds: 10),
+      ),
+    );
   }
 }

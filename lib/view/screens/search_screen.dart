@@ -29,6 +29,7 @@ class _SearchScreenState extends State<SearchScreen>
   String _currentQuery = '';
   String _error = '';
   bool _isNetworkError = false;
+  bool _playRequestCancelled = false;
 
   // Remove complex state tracking variables
   late AnimationController _fadeController;
@@ -249,31 +250,11 @@ class _SearchScreenState extends State<SearchScreen>
 
   Future<void> playTrack(Map<String, dynamic> track) async {
     HapticFeedback.mediumImpact();
+    _playRequestCancelled = false; // reset for new request
 
     final videoId = track['id']?['videoId'] ?? track['id'];
     final title = track['snippet']?['title'] ?? 'Unknown';
     final channelTitle = track['snippet']?['channelTitle'] ?? 'Unknown';
-
-    if (track['isFallback'] == true) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Redirecting to YouTube...'),
-          backgroundColor: Colors.red.withValues(alpha: 0.8),
-        ),
-      );
-      return;
-    }
-
-    final hasInternet = await hasInternetConnection();
-    if (!hasInternet) {
-      if (mounted) {
-        setState(() {
-          _error = 'No internet connection! Connect to the internet to play $title';
-          _isNetworkError = true;
-        });
-      }
-      return;
-    }
 
     try {
       final tempPhonk = Phonk(
@@ -286,10 +267,12 @@ class _SearchScreenState extends State<SearchScreen>
         plays: 0,
         previewUrl: null,
         spotifyUrl: null,
-        // imageUrl: track['snippet']?['thumbnails']?['medium']?['url'],
       );
 
       final result = await AudioPlayerService.playPhonk(tempPhonk);
+
+      // If user pressed stop while waiting, ignore late result
+      if (_playRequestCancelled) return; //?Need to rest to true on stop
 
       if (result == PlayResult.success) {
         if (mounted) {
@@ -321,7 +304,6 @@ class _SearchScreenState extends State<SearchScreen>
         throw Exception('Failed to play track');
       }
     } catch (e) {
-      print('Could not play: ${e.toString()}');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

@@ -54,7 +54,7 @@ class HelpSupportScreen extends StatelessWidget {
                 onTap: () {
                   // TODO: Open email client
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Opening email client...')),
+                    const SnackBar(content: Text('Emailing Coming Soon!')),
                   );
                 },
               ),
@@ -75,7 +75,7 @@ class HelpSupportScreen extends StatelessWidget {
                 onTap: () {
                   // TODO: Open phone dialer
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Opening phone dialer...')),
+                    const SnackBar(content: Text('Phone Support Coming Soon!')),
                   );
                 },
               ),

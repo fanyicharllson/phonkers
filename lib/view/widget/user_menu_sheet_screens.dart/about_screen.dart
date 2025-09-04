@@ -19,18 +19,15 @@ class AboutScreen extends StatelessWidget {
           children: [
             const SizedBox(height: 20),
 
-            // App Logo Placeholder
-            Container(
-              width: 120,
-              height: 120,
-              decoration: BoxDecoration(
-                color: Colors.purple.withValues(alpha: 0.3),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: const Icon(
-                Icons.music_note,
-                size: 60,
-                color: Colors.purple,
+            // App Logo
+            SizedBox(
+              height: 100,
+              child: Center(
+                child: Image.asset(
+                  "assets/splash/phonkers_splash_logo.png",
+                  height: 100,
+                  fit: BoxFit.contain,
+                ),
               ),
             ),
 
@@ -123,11 +120,23 @@ class AboutScreen extends StatelessWidget {
                   const SizedBox(height: 15),
                   Row(
                     children: [
-                      _buildSocialButton(Icons.web, () {}),
+                      _buildSocialButton(Icons.web, () {
+                        ScaffoldMessenger.of(
+                          context,
+                        ).showSnackBar(SnackBar(content: Text('Coming soon!')));
+                      }),
                       const SizedBox(width: 15),
-                      _buildSocialButton(Icons.email, () {}),
+                      _buildSocialButton(Icons.email, () {
+                        ScaffoldMessenger.of(
+                          context,
+                        ).showSnackBar(SnackBar(content: Text('Coming soon!')));
+                      }),
                       const SizedBox(width: 15),
-                      _buildSocialButton(Icons.share, () {}),
+                      _buildSocialButton(Icons.share, () {
+                        ScaffoldMessenger.of(
+                          context,
+                        ).showSnackBar(SnackBar(content: Text('Coming soon!')));
+                      }),
                     ],
                   ),
                 ],

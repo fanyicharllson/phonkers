@@ -47,10 +47,10 @@ class AudioPlayerService {
   static Phonk? get currentPhonk => _currentPhonk;
   static bool get isPlaying => _isPlaying;
   static bool get isLoading => _isLoading;
+  static bool _stopRequested = false;
 
   static Future<void> initialize() async {
     _stateSubscription = _audioPlayer.onPlayerStateChanged.listen((state) {
-      print('Audio player state changed: $state');
       _isPlaying = state == PlayerState.playing;
       _isPlayingController.add(_isPlaying);
 
@@ -87,64 +87,61 @@ class AudioPlayerService {
   // Enhanced playPhonk method with YouTube fallback
   static Future<PlayResult> playPhonk(Phonk phonk) async {
     try {
-      _isInitiatingPlayback = true; // Set flag
+      _stopRequested = false; // Reset at the start
+      _isInitiatingPlayback = true;
       _setLoadingState(true);
       _currentPhonk = phonk;
       _currentPhonkController.add(phonk);
 
-      // Try Spotify preview first
-      if (phonk.hasPreview &&
-          phonk.previewUrl != null &&
-          phonk.previewUrl!.isNotEmpty) {
+      // Try Spotify first
+      if (phonk.hasPreview && phonk.previewUrl?.isNotEmpty == true) {
         await _audioPlayer.stop();
+
+        if (_stopRequested) return _handleCancelled();
+
         await _audioPlayer.play(UrlSource(phonk.previewUrl!));
+
+        if (_stopRequested) return _handleCancelled();
 
         try {
           await PhonkService().incrementPlayCount(phonk.id);
-        } catch (e) {
-          print('Failed to increment play count: $e');
-        }
+        } catch (_) {}
 
         return PlayResult.success;
       }
 
-      // Fallback to YouTube if no Spotify preview
-      print('No Spotify preview, trying YouTube...');
+      // Fallback to YouTube
       final youtubeData = await YouTubeAudioService.searchAndGetAudioUrl(
         phonk.artist,
         phonk.title,
         additionalQuery: 'phonk',
       );
 
+      if (_stopRequested) return _handleCancelled();
+
       if (youtubeData != null && youtubeData['audioUrl'] != null) {
-        // print('Got YouTube audio URL: ${youtubeData['audioUrl']}');
         await _audioPlayer.stop();
 
-        // print('Attempting to play YouTube audio...');
+        if (_stopRequested) return _handleCancelled();
+
         await _audioPlayer.play(UrlSource(youtubeData['audioUrl']));
 
-        // print('Playing from YouTube: ${youtubeData['title']}');
+        if (_stopRequested) return _handleCancelled();
 
         try {
           await PhonkService().incrementPlayCount(phonk.id);
-        } catch (e) {
-          print('Failed to increment play count: $e');
-        }
+        } catch (_) {}
 
         return PlayResult.success;
       }
 
-      // If both fail, return no preview
-      _isInitiatingPlayback = false;
-      _setLoadingState(false);
-      return PlayResult.noPreview;
+      return _handleCancelled();
     } catch (e) {
       print('Error playing phonk: $e');
-      _currentPhonk = null;
-      _currentPhonkController.add(null);
+      return PlayResult.error;
+    } finally {
       _isInitiatingPlayback = false;
       _setLoadingState(false);
-      return PlayResult.error;
     }
   }
 
@@ -188,6 +185,7 @@ class AudioPlayerService {
   }
 
   static Future<void> stop() async {
+    _stopRequested = true;
     await _audioPlayer.stop();
     _currentPhonk = null;
     _currentPosition = Duration.zero;
@@ -198,6 +196,14 @@ class AudioPlayerService {
 
   static Future<void> seek(Duration position) async {
     await _audioPlayer.seek(position);
+  }
+
+  static PlayResult _handleCancelled() {
+    _currentPhonk = null;
+    _currentPhonkController.add(null);
+    _isInitiatingPlayback = false;
+    _setLoadingState(false);
+    return PlayResult.error; // or a custom PlayResult.cancelled
   }
 
   static void dispose() {

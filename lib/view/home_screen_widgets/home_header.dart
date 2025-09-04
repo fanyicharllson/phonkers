@@ -45,26 +45,33 @@ class HomeHeader extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           // Greeting + Username
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                "Good ${_getTimeOfDay()},",
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.7),
-                  fontSize: 16,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Good ${_getTimeOfDay()},",
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.7),
+                    fontSize: 16,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                username,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
+                const SizedBox(height: 4),
+
+                // 👇 horizontally scrollable username
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Text(
+                    username,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
 
           // Notifications & Profile
@@ -104,7 +111,7 @@ class HomeHeader extends StatelessWidget {
                         ? Image.network(
                             profileImageUrl,
                             fit: BoxFit.cover,
-                            key: ValueKey(profileImageUrl), // 👈 ensures reload
+                            key: ValueKey(profileImageUrl),
                             errorBuilder: (context, error, stackTrace) {
                               return const Icon(
                                 Icons.person,
