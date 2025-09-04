@@ -127,14 +127,16 @@ class _EditProfileScreenState extends State<EditProfileScreen>
               ),
               onTap: () => _selectImage(ImageSource.gallery),
             ),
-            ListTile(
-              leading: const Icon(Icons.camera_alt, color: Colors.white70),
-              title: const Text(
-                'Take Photo',
-                style: TextStyle(color: Colors.white),
-              ),
-              onTap: () => _selectImage(ImageSource.camera),
-            ),
+            //! Tobe implemented*****************************************
+            // ListTile( 
+            //   leading: const Icon(Icons.camera_alt, color: Colors.white70),
+            //   title: const Text(
+            //     'Take Photo',
+            //     style: TextStyle(color: Colors.white),
+            //   ),
+            //   onTap: () => _selectImage(ImageSource.camera),
+            // ),
+            //! Tobe implemented*****************************************
             if (_changeDetector?.hasImage == true)
               ListTile(
                 leading: const Icon(Icons.delete, color: Colors.red),
@@ -162,8 +164,6 @@ class _EditProfileScreenState extends State<EditProfileScreen>
   }
 
   Future<void> _selectImage(ImageSource source) async {
-    Navigator.pop(context);
-
     try {
       final pickedFile = await _picker.pickImage(
         source: source,
@@ -172,12 +172,18 @@ class _EditProfileScreenState extends State<EditProfileScreen>
         maxHeight: 800,
       );
 
+      if (!mounted) return; // prevent setState on disposed widget
+
+      Navigator.pop(context); // now safely close the bottom sheet
+
       if (pickedFile != null && _changeDetector != null) {
         _changeDetector!.setNewImage(File(pickedFile.path));
         setState(() {});
       }
     } catch (e) {
-      _showErrorSnackBar('Error selecting image: ${e.toString()}');
+      if (mounted) {
+        _showErrorSnackBar('Error selecting image: ${e.toString()}');
+      }
     }
   }
 
