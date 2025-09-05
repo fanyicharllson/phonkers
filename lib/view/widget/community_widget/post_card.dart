@@ -2,8 +2,15 @@ import 'package:flutter/material.dart';
 
 class PostCard extends StatefulWidget {
   final Map<String, dynamic> post;
+  final Future<void> Function() onLikePressed;
+  final void Function() onCommentPressed;
 
-  const PostCard({super.key, required this.post});
+  const PostCard({
+    super.key,
+    required this.post,
+    required this.onLikePressed,
+    required this.onCommentPressed,
+  });
 
   @override
   State<PostCard> createState() => _PostCardState();
@@ -65,6 +72,16 @@ class _PostCardState extends State<PostCard> {
   Widget build(BuildContext context) {
     final userTypeColor = _getUserTypeColor(widget.post['userType']);
 
+    // Safely get timestamp as non-nullable DateTime
+    DateTime timestamp;
+    final ts = widget.post['timestamp'];
+
+    if (ts != null) {
+      timestamp = ts is DateTime ? ts : ts.toDate();
+    } else {
+      timestamp = DateTime.now(); // fallback if null
+    }
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
@@ -91,7 +108,7 @@ class _PostCardState extends State<PostCard> {
         mainAxisSize: MainAxisSize.min,
         children: [
           // User Header
-          _buildUserHeader(userTypeColor),
+          _buildUserHeader(userTypeColor, timestamp),
 
           // Post Content
           Padding(
@@ -121,7 +138,7 @@ class _PostCardState extends State<PostCard> {
     );
   }
 
-  Widget _buildUserHeader(Color userTypeColor) {
+  Widget _buildUserHeader(Color userTypeColor, DateTime timestamp) {
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Row(
@@ -206,7 +223,7 @@ class _PostCardState extends State<PostCard> {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  _getTimeAgo(widget.post['timestamp']),
+                  _getTimeAgo(timestamp),
                   style: const TextStyle(color: Colors.white60, fontSize: 11),
                 ),
               ],
@@ -372,7 +389,8 @@ class _PostCardState extends State<PostCard> {
               setState(() {
                 _isLiked = !_isLiked;
               });
-              // TODO: Handle like/unlike
+              //! Todo
+              widget.onLikePressed();
             },
           ),
           const SizedBox(width: 20),
@@ -381,7 +399,7 @@ class _PostCardState extends State<PostCard> {
             label: _formatCount(widget.post['comments']),
             color: Colors.white60,
             onTap: () {
-              // TODO: Open comments
+              widget.onCommentPressed(); //!check this again
             },
           ),
           const SizedBox(width: 20),
