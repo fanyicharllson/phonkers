@@ -9,10 +9,14 @@ class ProfileScreen extends StatefulWidget {
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
-class _ProfileScreenState extends State<ProfileScreen> {
+class _ProfileScreenState extends State<ProfileScreen>
+    with AutomaticKeepAliveClientMixin {
   Map<String, dynamic>? userProfile;
   List<String> favoriteSongs = [];
   bool isLoading = true;
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -125,6 +129,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final profileImageUrl = userProfile?['profileImageUrl'] as String?;
     final username = userProfile?['username'] as String? ?? '';
     final email = userProfile?['email'] as String? ?? '';
@@ -251,7 +256,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         const Text(
-                          'Favorite Songs',
+                          'Favorite Phonk Songs',
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 18,
@@ -280,7 +285,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ? const Padding(
                               padding: EdgeInsets.all(20),
                               child: Text(
-                                'No favorite songs yet',
+                                'No favorite phonk songs yet! Click the plus icon to add your favorite phonk song.',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   color: Colors.white54,

@@ -1,4 +1,3 @@
-// import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:phonkers/view/home_screen_widgets/discover_section.dart';
 import 'package:phonkers/view/home_screen_widgets/featured_phonk_card.dart';
