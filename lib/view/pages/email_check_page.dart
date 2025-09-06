@@ -133,7 +133,7 @@ class _EmailCheckPageState extends State<EmailCheckPage>
     // Wait a moment then navigate
     Future.delayed(const Duration(seconds: 2), () {
       if (mounted) {
-        Navigator.pushReplacementNamed(context, '/main');
+        Navigator.pushReplacementNamed(context, '/welcome-info');
       }
     });
   }

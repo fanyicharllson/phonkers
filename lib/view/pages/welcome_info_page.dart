@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:phonkers/view/pages/auth_page.dart';
+import 'package:phonkers/view/pages/user_type_page.dart';
 import 'package:phonkers/view/widget/choice_card.dart';
 
 class WelcomeInfoPage extends StatefulWidget {
@@ -23,12 +23,13 @@ class _WelcomeInfoPageState extends State<WelcomeInfoPage> {
 
   void _handleContinue() {
     if (selectedChoice != null) {
-      // TODO: Save to Firebase
-      print("User choice: $selectedChoice");
+      debugPrint("User choice: $selectedChoice");
       // Navigate to next page
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const AuthPage()),
+        MaterialPageRoute(
+          builder: (context) => UserTypePage(musicPreference: selectedChoice!),
+        ),
       );
     }
   }

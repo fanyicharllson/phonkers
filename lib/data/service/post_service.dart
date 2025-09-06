@@ -166,6 +166,9 @@ class PostService {
     final userDoc = await _firestore.collection('users').doc(user.uid).get();
     final userData = userDoc.data() ?? {};
 
+    print("User Data to be save in comment: $userData");
+    print("User profile image url: $userData['profileImageUrl']");
+
     final commentData = {
       'id': '',
       'postId': postId,

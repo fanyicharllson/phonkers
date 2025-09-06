@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:phonkers/view/pages/welcome_info_page.dart';
-import 'package:phonkers/view/widget/animations.dart';
+import 'package:phonkers/view/pages/auth_page.dart';
 
 class WelcomePage extends StatelessWidget {
   const WelcomePage({super.key});
@@ -19,112 +18,198 @@ class WelcomePage extends StatelessWidget {
         ),
         child: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32.0),
-            child: Column(
-              children: [
-                const Spacer(flex: 2),
-
-                // Animated Logo - Using ScaleAnimation
-                ScaleAnimation(
-                  duration: const Duration(milliseconds: 1500),
-                  curve: Curves.elasticOut,
-                  child: GlowAnimation(
-                    glowColor: Colors.purple,
-                    child: Container(
-                      width: 150,
-                      height: 150,
-                      decoration: BoxDecoration(
-                        color: Colors.purple.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(75),
-                        border: Border.all(
-                          color: Colors.purple.withValues(alpha: 0.3),
-                          width: 2,
+            padding: const EdgeInsets.all(24.0),
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  const SizedBox(height: 60),
+              
+                  // Logo Section
+                  Expanded(
+                    flex: 2,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Image.asset(
+                          "assets/splash/phonkers_splash_logo.png",
+                          height: 120,
+                          fit: BoxFit.contain,
                         ),
-                      ),
-                      child: const Center(
-                        child: Icon(
-                          Icons.music_note,
-                          size: 80,
-                          color: Colors.purple,
+              
+                        const SizedBox(height: 30),
+              
+                        const Text(
+                          "Welcome to Phonkers",
+                          style: TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
                         ),
+              
+                        const SizedBox(height: 16),
+              
+                        Text(
+                          "Discover, post, and share phonk music\nwith the community",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 18,
+                            color: Colors.white.withValues(alpha: 0.7),
+                            height: 1.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              
+                  // Features Section
+                  Expanded(
+                    flex: 2,
+                    child: SingleChildScrollView(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          _buildFeatureItem(
+                            icon: Icons.music_note,
+                            title: "Discover Phonk",
+                            subtitle: "Explore the latest phonk tracks and beats",
+                          ),
+                      
+                          const SizedBox(height: 24),
+                      
+                          _buildFeatureItem(
+                            icon: Icons.people,
+                            title: "Connect with Community",
+                            subtitle: "Discuss with artists, producers, and fans",
+                          ),
+                      
+                          const SizedBox(height: 24),
+                      
+                          _buildFeatureItem(
+                            icon: Icons.share,
+                            title: "Share Your Music",
+                            subtitle: "Upload and share your phonk creations",
+                          ),
+                      
+                          const SizedBox(height: 24),
+                      
+                          _buildFeatureItem(
+                            icon: Icons.share,
+                            title: "Trending Phonk Songs",
+                            subtitle: "Get notified on trending phonk songs",
+                          ),
+                        ],
                       ),
                     ),
                   ),
-                ),
-
-                const SizedBox(height: 60),
-
-                // Animated Text Section - Using StaggerAnimation
-                StaggerAnimation(
-                  initialDelay: const Duration(milliseconds: 1800),
-                  staggerDelay: const Duration(milliseconds: 300),
-                  animationType: AnimationType.slideUp,
-                  children: [
-                    const Text(
-                      "Welcome to",
-                      style: TextStyle(
-                        fontSize: 24,
-                        color: Colors.white70,
-                        fontWeight: FontWeight.w300,
-                        letterSpacing: 1.2,
-                      ),
-                    ),
-
-                    const SizedBox(height: 8),
-
-                    ShaderMask(
-                      shaderCallback: (bounds) => const LinearGradient(
-                        colors: [Colors.purple, Colors.deepPurple],
-                      ).createShader(bounds),
-                      child: const Text(
-                        "PHONKERS",
-                        style: TextStyle(
-                          fontSize: 36,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                          letterSpacing: 3.0,
+              
+                  // Get Started Button
+                  Expanded(
+                    flex: 1,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        Container(
+                          width: double.infinity,
+                          height: 54,
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Colors.purple, Colors.deepPurple],
+                            ),
+                            borderRadius: BorderRadius.circular(27),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.purple.withValues(alpha: 0.3),
+                                blurRadius: 12,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: ElevatedButton(
+                            onPressed: () {
+                              Navigator.pushReplacement(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const AuthPage(),
+                                ),
+                              );
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.transparent,
+                              shadowColor: Colors.transparent,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(27),
+                              ),
+                            ),
+                            child: const Text(
+                              "Let's Get Started",
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
+              
+                        const SizedBox(height: 32),
+                      ],
                     ),
-
-                    const SizedBox(height: 24),
-
-                    Text(
-                      "Dive into the dark beats\nExperience phonk like never before",
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.white.withValues(alpha: 0.7),
-                        height: 1.5,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ],
-                ),
-
-                const Spacer(flex: 3),
-
-                // Animated Button - Using AnimatedButton
-                AnimatedButton(
-                  text: "Let's Get Started",
-                  delay: const Duration(milliseconds: 2800),
-                  icon: Icons.arrow_forward,
-                  onPressed: () {
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const WelcomeInfoPage(),
-                      ),
-                    );
-                  },
-                ),
-
-                const SizedBox(height: 40),
-              ],
+                  ),
+                ],
+              ),
             ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildFeatureItem({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+  }) {
+    return Row(
+      children: [
+        Container(
+          width: 50,
+          height: 50,
+          decoration: BoxDecoration(
+            color: Colors.purple.withValues(alpha: 0.2),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(icon, color: Colors.purple, size: 24),
+        ),
+
+        const SizedBox(width: 16),
+
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
+
+              const SizedBox(height: 4),
+
+              Text(
+                subtitle,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.white.withValues(alpha: 0.7),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

@@ -1,7 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:phonkers/data/service/user_service.dart';
 import 'package:phonkers/firebase_auth_service/auth_service.dart';
-// import 'package:phonkers/firebase_auth_service/auth_state_manager.dart';
 import 'package:phonkers/view/pages/welcome_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -412,37 +412,90 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             throw Exception('No user is currently signed in.');
                           }
 
+                          // Step 1: Delete user's Firebase Auth account
                           await authService.value.deleteAccount(
                             email: user.email!,
                             password: password,
                           );
 
-                          //clear any user searches
-                          final prefs = await SharedPreferences.getInstance();
-                          await prefs.remove('recent_searches');
-
-                          // Navigator.pop(context);
-                          showStyledSnackBar('Account deleted successfully.');
-                          // Optionally navigate to login or welcome screen here
-                          Navigator.of(context).popUntil(
-                            (route) => route.isFirst,
-                          ); // Pop all dialogs/pages
-                          Navigator.of(context).pushReplacement(
-                            MaterialPageRoute(
-                              builder: (_) => const WelcomePage(),
-                            ),
-                          );
-                        } on FirebaseAuthException catch (e) {
-                          String message = 'Failed to delete account.';
-                          if (e.code == 'wrong-password') {
-                            message = 'Current password is incorrect.';
+                          // Step 2: Delete user data from Firestore (posts, profile, etc.)
+                          try {
+                            await UserService.deleteUserData();
+                            debugPrint('User data deleted from Firestore');
+                          } catch (e) {
+                            debugPrint(
+                              'Warning: Could not delete all user data from Firestore: $e',
+                            );
+                            // Continue with the process even if Firestore cleanup fails
                           }
-                          showStyledSnackBar(message, isError: true);
+
+                          // Step 3: Clear local app data
+                          final prefs = await SharedPreferences.getInstance();
+                          await prefs.clear(); // Clear all preferences
+                         
+                          // await AuthStateManager.resetOnboardingStatus();
+
+
+                          if (mounted) {
+                            // Step 4: Show success message
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.check_circle,
+                                      color: Colors.white,
+                                    ),
+                                    SizedBox(width: 8),
+                                    Text('Account deleted successfully'),
+                                  ],
+                                ),
+                                backgroundColor: Colors.green,
+                                duration: Duration(seconds: 2),
+                              ),
+                            );
+
+                            // Step 5: Navigate to welcome page
+                            Future.delayed(Duration(milliseconds: 1500), () {
+                              if (mounted) {
+                                Navigator.of(context).pushAndRemoveUntil(
+                                  MaterialPageRoute(
+                                    builder: (context) => const WelcomePage(),
+                                  ),
+                                  (route) => false,
+                                );
+                              }
+                            });
+                          }
+                        } on FirebaseAuthException catch (e) {
+                          if (mounted) {
+                            String message = 'Failed to delete account.';
+                            switch (e.code) {
+                              case 'wrong-password':
+                                message = 'Current password is incorrect.';
+                                break;
+                              case 'requires-recent-login':
+                                message =
+                                    'Please log out and log back in, then try deleting your account again.';
+                                break;
+                              case 'too-many-requests':
+                                message =
+                                    'Too many attempts. Please try again later.';
+                                break;
+                              case 'network-request-failed':
+                                message =
+                                    'Network error. Please check your connection.';
+                                break;
+                            }
+                            showStyledSnackBar(message, isError: true);
+                          }
                         } catch (e) {
-                          showStyledSnackBar(
-                            'Error: ${e.toString()}',
-                            isError: true,
-                          );
+                          if (mounted) {
+                            showStyledSnackBar(
+                              'Error: ${e.toString()}',
+                              isError: true,
+                            );
+                          }
                         } finally {
                           if (mounted) setState(() => isLoading = false);
                         }

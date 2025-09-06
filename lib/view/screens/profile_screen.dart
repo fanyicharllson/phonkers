@@ -1,6 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:phonkers/firebase_auth_service/auth_service.dart';
+import 'package:phonkers/view/widget/profile_screen_widget/favorite_songs_widget.dart';
+import 'package:phonkers/view/widget/profile_screen_widget/profile_header_widget.dart';
+import 'package:phonkers/view/widget/profile_screen_widget/profile_info_widget.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -10,10 +13,18 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen>
-    with AutomaticKeepAliveClientMixin {
+    with AutomaticKeepAliveClientMixin, TickerProviderStateMixin {
   Map<String, dynamic>? userProfile;
   List<String> favoriteSongs = [];
   bool isLoading = true;
+  String userType = 'fan';
+  String? musicPreference;
+
+  late AnimationController _profileAnimationController;
+  late AnimationController _listAnimationController;
+  late Animation<double> _profileFadeAnimation;
+  late Animation<Offset> _profileSlideAnimation;
+  late Animation<double> _listFadeAnimation;
 
   @override
   bool get wantKeepAlive => true;
@@ -21,17 +32,64 @@ class _ProfileScreenState extends State<ProfileScreen>
   @override
   void initState() {
     super.initState();
+    _setupAnimations();
     _loadUserProfile();
+  }
+
+  void _setupAnimations() {
+    _profileAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+
+    _listAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+    );
+
+    _profileFadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _profileAnimationController,
+        curve: Curves.easeOut,
+      ),
+    );
+
+    _profileSlideAnimation =
+        Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero).animate(
+          CurvedAnimation(
+            parent: _profileAnimationController,
+            curve: Curves.easeOutCubic,
+          ),
+        );
+
+    _listFadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _listAnimationController, curve: Curves.easeOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _profileAnimationController.dispose();
+    _listAnimationController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadUserProfile() async {
     setState(() => isLoading = true);
     try {
       final profile = await authService.value.getUserProfile();
+
       if (profile != null) {
         setState(() {
           userProfile = profile;
+          userType = profile['userType'] as String? ?? 'fan';
+          musicPreference = profile['musicPreference'] as String?;
           favoriteSongs = List<String>.from(profile['favoriteSongs'] ?? []);
+        });
+
+        _profileAnimationController.forward();
+        Future.delayed(const Duration(milliseconds: 300), () {
+          _listAnimationController.forward();
         });
       }
     } catch (e) {
@@ -47,27 +105,64 @@ class _ProfileScreenState extends State<ProfileScreen>
     final result = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF2D1B47),
-        title: const Text(
-          'Add Favorite Song',
-          style: TextStyle(color: Colors.white),
-        ),
-        content: TextField(
-          controller: songController,
-          style: const TextStyle(color: Colors.white),
-          decoration: const InputDecoration(
-            labelText: 'Song name',
-            labelStyle: TextStyle(color: Colors.white70),
+        backgroundColor: const Color(0xFF1E0A2E),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(
+            color: Colors.purple.withValues(alpha: 0.3),
+            width: 1,
           ),
-          autofocus: true,
+        ),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.purple.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(
+                Icons.music_note,
+                color: Colors.purple,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Flexible(
+              child: Text(
+                'Add Favorite Song',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Container(
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.purple.withValues(alpha: 0.3)),
+          ),
+          child: TextField(
+            controller: songController,
+            style: const TextStyle(color: Colors.white),
+            decoration: const InputDecoration(
+              labelText: 'Song name',
+              labelStyle: TextStyle(color: Colors.white70),
+              border: InputBorder.none,
+              contentPadding: EdgeInsets.all(16),
+            ),
+            autofocus: true,
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text(
-              'Cancel',
-              style: TextStyle(color: Colors.white54),
-            ),
+            style: TextButton.styleFrom(foregroundColor: Colors.white54),
+            child: const Text('Cancel'),
           ),
           ElevatedButton(
             onPressed: () {
@@ -76,7 +171,14 @@ class _ProfileScreenState extends State<ProfileScreen>
                 Navigator.pop(context, song);
               }
             },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.purple),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.purple,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              elevation: 0,
+            ),
             child: const Text('Add'),
           ),
         ],
@@ -92,16 +194,26 @@ class _ProfileScreenState extends State<ProfileScreen>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              'Added "$result" to favorites 🎵',
-              style: TextStyle(color: Colors.white),
+            content: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.check_circle, color: Colors.white, size: 20),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    'Added "$result" to favorites',
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                ),
+              ],
             ),
-            backgroundColor: Colors.green,
+            backgroundColor: Colors.green.shade600,
             behavior: SnackBarBehavior.floating,
-            duration: const Duration(seconds: 2),
+            duration: const Duration(seconds: 3),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),
+            margin: const EdgeInsets.all(16),
           ),
         );
       }
@@ -137,199 +249,68 @@ class _ProfileScreenState extends State<ProfileScreen>
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Color(0xFF0A0A0F), Color(0xFF1A0B2E), Color(0xFF0A0A0F)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFF0A0A0F),
+            Color(0xFF1A0B2E),
+            Color(0xFF2D1B47),
+            Color(0xFF0A0A0F),
+          ],
+          stops: [0.0, 0.3, 0.7, 1.0],
         ),
       ),
       child: SafeArea(
         child: isLoading
             ? const Center(
-                child: CircularProgressIndicator(color: Colors.purple),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(
+                      color: Colors.purple,
+                      strokeWidth: 3,
+                    ),
+                    SizedBox(height: 16),
+                    Text(
+                      'Loading profile...',
+                      style: TextStyle(color: Colors.white70, fontSize: 16),
+                    ),
+                  ],
+                ),
               )
             : SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 16,
-                ),
+                padding: const EdgeInsets.all(20),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    // 🔹 Slim header bar
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(
-                        vertical: 12,
-                        horizontal: 16,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.purple.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Text(
-                        "My Profile",
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 1,
-                        ),
-                      ),
+                    ProfileHeaderWidget(
+                      profileFadeAnimation: _profileFadeAnimation,
+                      profileSlideAnimation: _profileSlideAnimation,
                     ),
 
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 32),
 
-                    // 🔹 Profile avatar
-                    Container(
-                      padding: const EdgeInsets.all(3),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: LinearGradient(
-                          colors: [
-                            Colors.purple.shade300,
-                            Colors.purple.shade700,
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                      ),
-                      child: CircleAvatar(
-                        radius: 50,
-                        backgroundColor: Colors.purple.shade700,
-                        backgroundImage:
-                            profileImageUrl != null &&
-                                profileImageUrl.isNotEmpty
-                            ? NetworkImage(profileImageUrl)
-                            : null,
-                        child:
-                            profileImageUrl == null || profileImageUrl.isEmpty
-                            ? const Icon(
-                                Icons.person,
-                                size: 48,
-                                color: Colors.white,
-                              )
-                            : null,
-                      ),
+                    ProfileInfoWidget(
+                      profileImageUrl: profileImageUrl,
+                      username: username,
+                      email: email,
+                      userType: userType,
+                      musicPreference: musicPreference,
+                      profileFadeAnimation: _profileFadeAnimation,
+                      profileSlideAnimation: _profileSlideAnimation,
                     ),
 
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 32),
 
-                    // 🔹 User info
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(
-                        vertical: 16,
-                        horizontal: 20,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.05),
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Text(
-                            username,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 22,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            email,
-                            style: const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 28),
-
-                    // 🔹 Favorite songs
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'Favorite Phonk Songs',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: _addFavoriteSong,
-                          icon: const Icon(
-                            Icons.add_circle_outline,
-                            color: Colors.purple,
-                            size: 24,
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.05),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: favoriteSongs.isEmpty
-                          ? const Padding(
-                              padding: EdgeInsets.all(20),
-                              child: Text(
-                                'No favorite phonk songs yet! Click the plus icon to add your favorite phonk song.',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: Colors.white54,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            )
-                          : ListView.separated(
-                              shrinkWrap: true,
-                              physics: const NeverScrollableScrollPhysics(),
-                              itemCount: favoriteSongs.length,
-                              separatorBuilder: (_, __) => const Divider(
-                                color: Colors.white24,
-                                height: 1,
-                              ),
-                              itemBuilder: (context, index) {
-                                final song = favoriteSongs[index];
-                                return ListTile(
-                                  contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 4,
-                                  ),
-                                  title: Text(
-                                    song,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 15,
-                                    ),
-                                  ),
-                                  trailing: IconButton(
-                                    icon: const Icon(
-                                      Icons.delete_outline,
-                                      color: Colors.redAccent,
-                                    ),
-                                    onPressed: () async {
-                                      setState(() {
-                                        favoriteSongs.removeAt(index);
-                                      });
-                                      await _saveFavoriteSongs();
-                                    },
-                                  ),
-                                );
-                              },
-                            ),
+                    FavoriteSongsWidget(
+                      favoriteSongs: favoriteSongs,
+                      listFadeAnimation: _listFadeAnimation,
+                      onAddSong: _addFavoriteSong,
+                      onRemoveSong: (index) async {
+                        setState(() {
+                          favoriteSongs.removeAt(index);
+                        });
+                        await _saveFavoriteSongs();
+                      },
                     ),
 
                     const SizedBox(height: 40),

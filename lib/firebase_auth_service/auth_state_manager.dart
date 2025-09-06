@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:phonkers/data/service/user_service.dart';
 import 'package:phonkers/firebase_auth_service/auth_service.dart';
 import 'package:phonkers/view/pages/auth_page.dart';
 import 'package:phonkers/view/pages/email_check_page.dart';
 import 'package:phonkers/view/pages/main_page.dart';
+import 'package:phonkers/view/pages/welcome_info_page.dart';
 import 'package:phonkers/view/pages/welcome_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -31,7 +33,7 @@ class _AuthStateManagerState extends State<AuthStateManager> {
           return const LoadingScreen();
         }
 
-        // No user signed in
+        // No user signed in - show welcome or auth based on first time
         if (snapshot.data == null) {
           return FutureBuilder<bool>(
             future: _isFirstTime(),
@@ -41,44 +43,71 @@ class _AuthStateManagerState extends State<AuthStateManager> {
                 return const LoadingScreen();
               }
 
-              // First time user - show welcome flow
               if (firstTimeSnapshot.data == true) {
+                // First time user - show welcome page first
+                debugPrint("First time user - showing welcome page");
                 return const WelcomePage();
               } else {
-                // Returning user without account - show auth
+                // Returning user without account - directly show auth
+                debugPrint("Returning user without auth - showing auth page");
                 return const AuthPage();
               }
             },
           );
         }
 
-        // User signed in - check email verification
+        // User signed in - check email verification first
         User user = snapshot.data!;
+
         if (!user.emailVerified) {
+          debugPrint("User email not verified - showing email check");
           return EmailCheckPage(email: user.email ?? '');
         }
 
-        // User signed in and verified - go to main app
-        return const MainPage(); // Your main phonk app screen
+        // Email verified - check if user profile is complete
+        return FutureBuilder<bool>(
+          future: UserService.isProfileComplete(),
+          builder: (context, profileSnapshot) {
+            if (profileSnapshot.connectionState == ConnectionState.waiting) {
+              return const LoadingScreen(message: "Checking profile...");
+            }
+
+            // If profile is not complete, redirect to onboarding flow
+            if (profileSnapshot.data != true) {
+              debugPrint("User profile incomplete - showing welcome info");
+              return const WelcomeInfoPage();
+            }
+
+            // User signed in, verified, and profile complete - go to main app
+            debugPrint(
+              "User authenticated and profile complete - showing main page",
+            );
+            return const MainPage();
+          },
+        );
       },
     );
   }
 
+  /// Check if it's user's first time visiting the app
   Future<bool> _isFirstTime() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     bool isFirstTime = prefs.getBool('first_time') ?? true;
 
     if (isFirstTime) {
       await prefs.setBool('first_time', false);
+      debugPrint("Marked first_time as false");
     }
 
     return isFirstTime;
   }
 }
 
-// Simple loading screen
+// Enhanced loading screen with more context
 class LoadingScreen extends StatelessWidget {
-  const LoadingScreen({super.key});
+  final String? message;
+
+  const LoadingScreen({super.key, this.message});
 
   @override
   Widget build(BuildContext context) {
@@ -113,11 +142,12 @@ class LoadingScreen extends StatelessWidget {
               const SizedBox(height: 20),
 
               Text(
-                "Phonker Preparing, please wait...",
+                message ?? "Phonkers loading...",
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.7),
                   fontSize: 16,
                 ),
+                textAlign: TextAlign.center,
               ),
             ],
           ),

@@ -364,26 +364,48 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet>
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Avatar + optimistic dot
           Stack(
             children: [
-              CircleAvatar(
-                radius: 16,
-                backgroundImage: comment['avatar']?.isNotEmpty == true
-                    ? NetworkImage(comment['avatar'])
-                    : null,
-                backgroundColor: const Color(0xFF9F7AEA),
-                child: comment['avatar']?.isEmpty != false
-                    ? Text(
-                        comment['username']?.substring(0, 1).toUpperCase() ??
-                            'U',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                        ),
-                      )
-                    : null,
+              StreamBuilder<DocumentSnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(comment['userId'])
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) {
+                    return const CircleAvatar(
+                      radius: 16,
+                      backgroundColor: Colors.grey,
+                      child: Icon(Icons.person, color: Colors.white, size: 14),
+                    );
+                  }
+
+                  final userData =
+                      snapshot.data!.data() as Map<String, dynamic>?;
+                  final avatarUrl = userData?['profileImageUrl'];
+                  final username =
+                      userData?['username'] ?? comment['username'] ?? "User";
+
+                  return CircleAvatar(
+                    radius: 16,
+                    backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty
+                        ? NetworkImage(avatarUrl)
+                        : null,
+                    backgroundColor: const Color(0xFF9F7AEA),
+                    child: (avatarUrl == null || avatarUrl.isEmpty)
+                        ? Text(
+                            username.substring(0, 1).toUpperCase(),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                            ),
+                          )
+                        : null,
+                  );
+                },
               ),
-              // Show subtle indicator for optimistic comments
+
               if (isOptimistic)
                 Positioned(
                   right: 0,
@@ -399,7 +421,10 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet>
                 ),
             ],
           ),
+
           const SizedBox(width: 12),
+
+          // Comment content
           Expanded(
             child: AnimatedOpacity(
               opacity: isOptimistic ? 0.8 : 1.0,
@@ -407,14 +432,37 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    comment['username'] ?? 'Anonymous',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
-                    ),
+                  // Username from user doc
+                  StreamBuilder<DocumentSnapshot>(
+                    stream: FirebaseFirestore.instance
+                        .collection('users')
+                        .doc(comment['userId'])
+                        .snapshots(),
+                    builder: (context, snapshot) {
+                      if (!snapshot.hasData) {
+                        return const Text(
+                          "Loading...",
+                          style: TextStyle(color: Colors.white, fontSize: 14),
+                        );
+                      }
+                      final userData =
+                          snapshot.data!.data() as Map<String, dynamic>?;
+                      final username =
+                          userData?['username'] ??
+                          comment['username'] ??
+                          "User";
+
+                      return Text(
+                        username,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      );
+                    },
                   ),
+
                   const SizedBox(height: 4),
                   Text(
                     comment['content'] ?? '',
@@ -424,6 +472,8 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet>
                     ),
                   ),
                   const SizedBox(height: 6),
+
+                  // Time, Reply, Posting...
                   Row(
                     children: [
                       Text(
@@ -448,7 +498,6 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet>
                         const SizedBox(width: 16),
                         GestureDetector(
                           onTap: () {
-                            // TODO: Implement reply functionality
                             ToastUtil.showToast(
                               context,
                               "Reply functionality Coming Soon!",
@@ -472,7 +521,8 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet>
               ),
             ),
           ),
-          // TikTok-style like button positioned on the right
+
+          // Like button
           if (!isOptimistic)
             Padding(
               padding: const EdgeInsets.only(left: 8),
@@ -535,6 +585,13 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet>
             PostService.toggleCommentLike(widget.post['id'], commentId),
         useToast: true,
       );
+      if (mounted) {
+        ToastUtil.showToast(
+          context,
+          "Comment liked!",
+          background: Colors.deepPurple,
+        );
+      }
     } catch (e) {
       debugPrint("Error toggling comment like: ${e.toString()}");
       if (mounted) {

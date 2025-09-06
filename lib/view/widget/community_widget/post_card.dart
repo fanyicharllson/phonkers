@@ -1,5 +1,7 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:phonkers/view/widget/community_widget/post_more_options.dart';
+import 'package:phonkers/view/widget/toast_util.dart';
 
 class PostCard extends StatefulWidget {
   final Map<String, dynamic> post;
@@ -148,14 +150,55 @@ class _PostCardState extends State<PostCard> {
           Stack(
             clipBehavior: Clip.none,
             children: [
-              CircleAvatar(
-                radius: 20,
-                backgroundColor: userTypeColor.withValues(alpha: 0.3),
-                child: CircleAvatar(
-                  radius: 18,
-                  backgroundImage: NetworkImage(widget.post['avatar']),
-                ),
+              StreamBuilder<DocumentSnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(widget.post['userId'])
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) {
+                    return CircleAvatar(
+                      radius: 20,
+                      backgroundColor: Colors.grey.shade800,
+                      child: const Icon(
+                        Icons.person,
+                        color: Colors.white,
+                        size: 18,
+                      ),
+                    );
+                  }
+
+                  final userData =
+                      snapshot.data!.data() as Map<String, dynamic>?;
+
+                  final avatarUrl = userData?['profileImageUrl'];
+                  final username =
+                      userData?['username'] ?? widget.post['username'];
+
+                  return CircleAvatar(
+                    radius: 20,
+                    backgroundColor: userTypeColor.withValues(alpha: 0.3),
+                    child: CircleAvatar(
+                      radius: 18,
+                      backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty
+                          ? NetworkImage(avatarUrl)
+                          : null,
+                      backgroundColor: const Color(0xFF9F7AEA),
+                      child: (avatarUrl == null || avatarUrl.isEmpty)
+                          ? Text(
+                              username.substring(0, 1).toUpperCase(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                              ),
+                            )
+                          : null,
+                    ),
+                  );
+                },
               ),
+
+              // Badge
               Positioned(
                 bottom: -2,
                 right: -2,
@@ -177,24 +220,44 @@ class _PostCardState extends State<PostCard> {
           ),
           const SizedBox(width: 12),
 
-          // User info - Flexible to prevent overflow
+          // User info
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Username and badge row
                 Row(
                   children: [
                     Flexible(
-                      child: Text(
-                        widget.post['username'],
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 15,
-                        ),
-                        overflow: TextOverflow.ellipsis,
+                      child: StreamBuilder<DocumentSnapshot>(
+                        stream: FirebaseFirestore.instance
+                            .collection('users')
+                            .doc(widget.post['userId'])
+                            .snapshots(),
+                        builder: (context, snapshot) {
+                          if (!snapshot.hasData) {
+                            return const Text(
+                              'Loading...',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 15,
+                              ),
+                            );
+                          }
+                          final userData =
+                              snapshot.data!.data() as Map<String, dynamic>?;
+                          final username =
+                              userData?['username'] ?? widget.post['username'];
+                          return Text(
+                            username,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 15,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          );
+                        },
                       ),
                     ),
                     const SizedBox(width: 6),
@@ -231,7 +294,7 @@ class _PostCardState extends State<PostCard> {
             ),
           ),
 
-          // More options button
+          // More options
           SizedBox(
             width: 32,
             height: 32,
@@ -403,6 +466,11 @@ class _PostCardState extends State<PostCard> {
             color: Colors.white60,
             onTap: () {
               // TODO: Handle share
+              ToastUtil.showToast(
+                context,
+                "Post Sharing Coming Soon!",
+                background: Colors.deepPurple,
+              );
             },
           ),
           const Spacer(),
@@ -412,6 +480,11 @@ class _PostCardState extends State<PostCard> {
             color: Colors.white60,
             onTap: () {
               // TODO: Handle bookmark
+              ToastUtil.showToast(
+                context,
+                "Post bookmark Coming Soon!",
+                background: Colors.deepPurple,
+              );
             },
           ),
         ],

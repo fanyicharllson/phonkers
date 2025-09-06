@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:phonkers/data/service/post_service.dart';
 import 'package:phonkers/view/widget/community_widget/comments_bottum_sheets.dart';
 import 'package:phonkers/view/widget/network_widget/network_aware_mixin.dart';
+import 'package:phonkers/view/widget/toast_util.dart';
 import 'post_card.dart';
 
 class CommunityFeed extends StatefulWidget {
@@ -43,7 +44,15 @@ class _CommunityFeedState extends State<CommunityFeed>
   Future<void> _onLikePressed(String postId) async {
     await executeWithNetworkCheck(
       action: () => PostService.toggleLike(postId),
+      useToast: true,
     );
+    if (mounted) {
+      ToastUtil.showToast(
+        context,
+        "Post liked!",
+        background: Colors.deepPurple,
+      );
+    }
     // no local setState needed since Firestore snapshot will update automatically
   }
 

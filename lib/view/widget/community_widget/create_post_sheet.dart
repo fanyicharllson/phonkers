@@ -66,7 +66,7 @@ class _CreatePostSheetState extends State<CreatePostSheet>
 
       // 🚀 Only show success if result is not null (i.e. action actually ran)
       if (result != null) {
-        Navigator.pop(context);
+        //! Uncomment if i want bottum sheet to hide: Navigator.pop(context); 
         // ScaffoldMessenger.of(context).showSnackBar(
         //   const SnackBar(
         //     content: Text(
