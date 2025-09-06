@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:phonkers/data/service/post_service.dart';
 import 'package:phonkers/view/widget/network_widget/network_aware_mixin.dart';
+import 'package:phonkers/view/widget/toast_util.dart';
 
 class CreatePostSheet extends StatefulWidget {
   const CreatePostSheet({super.key});
@@ -41,8 +42,12 @@ class _CreatePostSheetState extends State<CreatePostSheet>
     if (words.length > _maxWords) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text("Max $_maxWords words allowed!"),
+          content: Text(
+            "Max $_maxWords words allowed!",
+            style: TextStyle(color: Colors.white),
+          ),
           backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
         ),
       );
       return;
@@ -51,28 +56,51 @@ class _CreatePostSheetState extends State<CreatePostSheet>
     setState(() => _isPosting = true);
 
     try {
-      await executeWithNetworkCheck(
+      final result = await executeWithNetworkCheck(
         action: () => PostService.createPost(content: text),
+        useToast: true
       );
 
       if (!mounted) return;
       setState(() => _isPosting = false);
-      Navigator.pop(context);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Post shared with the community! 🎵'),
-          backgroundColor: Color(0xFF10B981),
-        ),
-      );
+      // 🚀 Only show success if result is not null (i.e. action actually ran)
+      if (result != null) {
+        Navigator.pop(context);
+        // ScaffoldMessenger.of(context).showSnackBar(
+        //   const SnackBar(
+        //     content: Text(
+        //       'Post shared with the community! 🎵',
+        //       style: TextStyle(color: Colors.white),
+        //     ),
+        //     backgroundColor: Color(0xFF10B981),
+        //     behavior: SnackBarBehavior.floating,
+        //   ),
+        // );
+        ToastUtil.showToast(
+          context,
+          "Post shared with the community! 🎵",
+          background: Colors.green,
+        );
+      }
     } catch (e) {
+      debugPrint("Error creating post: $e");
       if (mounted) {
         setState(() => _isPosting = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error creating post: $e'),
-            backgroundColor: Colors.red,
-          ),
+        // ScaffoldMessenger.of(context).showSnackBar(
+        //   SnackBar(
+        //     content: Text(
+        //       'Error creating post: $e',
+        //       style: TextStyle(color: Colors.white),
+        //     ),
+        //     backgroundColor: Colors.red,
+        //     behavior: SnackBarBehavior.floating,
+        //   ),
+        // );
+        ToastUtil.showToast(
+          context,
+          "Error creating post! Please try again.",
+          background: Colors.red,
         );
       }
     }

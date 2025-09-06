@@ -32,13 +32,13 @@ void main() async {
   if (networkService.isOnline) {
     final isSpotifyWorking = await SpotifyApiService.testConnection();
     final isYouTubeWorking = await YouTubeApiService.testConnection();
-    print('Spotify API working: $isSpotifyWorking');
-    print('YouTube API working: $isYouTubeWorking');
+    debugPrint('Spotify API working: $isSpotifyWorking');
+    debugPrint('YouTube API working: $isYouTubeWorking');
   } else {
-    print('No internet connection - skipping API tests');
+    debugPrint('No internet connection - skipping API tests');
   }
 
-  print('Audio app service initialized!');
+  debugPrint('Audio app service initialized!');
 
   runApp(const MyApp());
 }
@@ -71,11 +71,11 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     switch (state) {
       case AppLifecycleState.resumed:
         // App is back in foreground - refresh network status
-        print('App resumed');
+        debugPrint('App resumed');
         _networkService.refreshStatus();
         break;
       case AppLifecycleState.paused:
-        print('App paused');
+        debugPrint('App paused');
         break;
       case AppLifecycleState.detached:
         // App is being killed - clean up
@@ -91,7 +91,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     return NetworkStatusListener(
-      showInitialStatus: false, 
+      showInitialStatus: false,
       child: MaterialApp(
         title: 'Phonkers',
         debugShowCheckedModeBanner: false,

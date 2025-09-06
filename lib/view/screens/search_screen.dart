@@ -18,7 +18,10 @@ class SearchScreen extends StatefulWidget {
 }
 
 class _SearchScreenState extends State<SearchScreen>
-    with TickerProviderStateMixin, NetworkAwareMixin, AutomaticKeepAliveClientMixin {
+    with
+        TickerProviderStateMixin,
+        NetworkAwareMixin,
+        AutomaticKeepAliveClientMixin {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
 
@@ -42,12 +45,12 @@ class _SearchScreenState extends State<SearchScreen>
     super.initState();
     _initializeAnimations();
     _loadRecentSearches();
-    _autoFocusSearch();
+    // _autoFocusSearch();
   }
 
   @override
   bool get wantKeepAlive => true;
-  
+
   void _initializeAnimations() {
     _fadeController = AnimationController(
       duration: const Duration(milliseconds: 600),
@@ -73,11 +76,11 @@ class _SearchScreenState extends State<SearchScreen>
     _slideController.forward();
   }
 
-  void _autoFocusSearch() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _searchFocusNode.requestFocus();
-    });
-  }
+  // void _autoFocusSearch() {
+  //   WidgetsBinding.instance.addPostFrameCallback((_) {
+  //     _searchFocusNode.requestFocus();
+  //   });
+  // }
 
   Future<void> _loadRecentSearches() async {
     try {

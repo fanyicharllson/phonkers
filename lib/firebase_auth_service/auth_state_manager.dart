@@ -15,33 +15,19 @@ class AuthStateManager extends StatefulWidget {
 }
 
 class _AuthStateManagerState extends State<AuthStateManager> {
-  bool _isInitializing = true;
-
   @override
   void initState() {
     super.initState();
-    // Show loading for at least 3 second, then allow auth stream
-    Future.delayed(const Duration(seconds: 3), () {
-      if (mounted) {
-        setState(() {
-          _isInitializing = false;
-        });
-      }
-    });
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_isInitializing) {
-      return const LoadingScreen();
-    }
-
     return StreamBuilder<User?>(
       stream: authService.value.authStateChanges,
       builder: (context, snapshot) {
         // Still loading
         if (snapshot.connectionState == ConnectionState.waiting) {
-          print("Currently showing loading...");
+          debugPrint("Currently showing loading...");
           return const LoadingScreen();
         }
 

@@ -240,4 +240,97 @@ class PostService {
         .snapshots()
         .map((snapshot) => snapshot.docs.length);
   }
+
+  // Report a post
+  static Future<void> reportPost(String postId, String reason) async {
+    final reportsRef = _firestore.collection('postReports');
+
+    await reportsRef.add({
+      'postId': postId,
+      'reason': reason,
+      'timestamp': FieldValue.serverTimestamp(),
+      'reportedBy':
+          _auth.currentUser?.uid, // Replace with actual user ID/username
+    });
+  }
+
+  static Future<void> deletePost(String postId) async {
+    final docRef = _firestore.collection('posts').doc(postId);
+
+    // Delete all comments first to keep Firestore clean
+    final commentsSnapshot = await docRef.collection('comments').get();
+    for (var doc in commentsSnapshot.docs) {
+      await doc.reference.delete();
+    }
+
+    //delete all likes
+    final likesSnapshot = await docRef.collection('likes').get();
+    for (var doc in likesSnapshot.docs) {
+      await doc.reference.delete();
+    }
+
+    // Delete the post itself
+    await docRef.delete();
+  }
+
+  // Like/Unlike a comment
+  static Future<void> toggleCommentLike(String postId, String commentId) async {
+    final user = _auth.currentUser;
+    if (user == null) throw Exception('User not authenticated');
+
+    final commentRef = _firestore
+        .collection('posts')
+        .doc(postId)
+        .collection('comments')
+        .doc(commentId);
+
+    await _firestore.runTransaction((transaction) async {
+      final commentDoc = await transaction.get(commentRef);
+
+      if (!commentDoc.exists) {
+        throw Exception('Comment not found');
+      }
+
+      final data = commentDoc.data()!;
+      final likedBy = List<String>.from(data['likedBy'] ?? []);
+      final currentLikes = data['likes'] ?? 0;
+
+      if (likedBy.contains(user.uid)) {
+        // Unlike
+        likedBy.remove(user.uid);
+        transaction.update(commentRef, {
+          'likedBy': likedBy,
+          'likes': currentLikes - 1,
+        });
+      } else {
+        // Like
+        likedBy.add(user.uid);
+        transaction.update(commentRef, {
+          'likedBy': likedBy,
+          'likes': currentLikes + 1,
+        });
+      }
+    });
+  }
+
+  // Check if user has liked a comment
+  static Future<bool> hasUserLikedComment(
+    String postId,
+    String commentId,
+  ) async {
+    final user = _auth.currentUser;
+    if (user == null) return false;
+
+    final commentDoc = await _firestore
+        .collection('posts')
+        .doc(postId)
+        .collection('comments')
+        .doc(commentId)
+        .get();
+
+    if (!commentDoc.exists) return false;
+
+    final likedBy = List<String>.from(commentDoc.data()?['likedBy'] ?? []);
+    return likedBy.contains(user.uid);
+  }
 }

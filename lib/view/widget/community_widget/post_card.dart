@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:phonkers/view/widget/community_widget/post_more_options.dart';
 
 class PostCard extends StatefulWidget {
   final Map<String, dynamic> post;
@@ -234,16 +235,9 @@ class _PostCardState extends State<PostCard> {
           SizedBox(
             width: 32,
             height: 32,
-            child: IconButton(
-              onPressed: () {
-                // TODO: Show post options
-              },
-              icon: const Icon(
-                Icons.more_horiz,
-                color: Colors.white60,
-                size: 18,
-              ),
-              padding: EdgeInsets.zero,
+            child: PostMoreOptions(
+              postId: widget.post['id'],
+              postOwnerId: widget.post['userId'],
             ),
           ),
         ],

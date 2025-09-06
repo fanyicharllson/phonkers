@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:phonkers/data/service/network_status_service.dart';
+import 'package:phonkers/view/widget/toast_util.dart';
 
 // Mixin to make any widget network-aware
 mixin NetworkAwareMixin<T extends StatefulWidget> on State<T> {
@@ -58,21 +59,37 @@ mixin NetworkAwareMixin<T extends StatefulWidget> on State<T> {
     required Future<T> Function() action,
     VoidCallback? onNoInternet,
     bool showSnackBar = true,
+    bool useToast = false, //  choose if toast should be used
   }) async {
     if (!await hasInternetConnection()) {
-      if (showSnackBar && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Row(
-              children: [
-                Icon(Icons.wifi_off, color: Colors.white),
-                SizedBox(width: 12),
-                Text('No internet connection'),
-              ],
+      if (mounted) {
+        if (useToast) {
+          ToastUtil.showToast(
+            context,
+            'No internet connection! Please check your network.',
+            background: Colors.deepPurple,
+          );
+        } else if (showSnackBar) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: const [
+                  Icon(Icons.wifi_off, color: Colors.white),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'No internet connection!',
+                      style: TextStyle(color: Colors.white),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 2,
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.deepPurple,
             ),
-            backgroundColor: Colors.deepPurple,
-          ),
-        );
+          );
+        }
       }
       onNoInternet?.call();
       return null;

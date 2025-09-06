@@ -44,7 +44,7 @@ class _CommunityFeedState extends State<CommunityFeed>
     await executeWithNetworkCheck(
       action: () => PostService.toggleLike(postId),
     );
-    // ❌ no local setState needed since Firestore snapshot will update automatically
+    // no local setState needed since Firestore snapshot will update automatically
   }
 
   @override

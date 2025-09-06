@@ -42,6 +42,7 @@ class SearchBarWidget extends StatelessWidget {
               return TextField(
                 controller: controller,
                 focusNode: focusNode,
+                autofocus: false,
                 style: const TextStyle(color: Colors.white, fontSize: 16),
                 decoration: InputDecoration(
                   hintText: 'Search for phonks... (Artist - Title)',
