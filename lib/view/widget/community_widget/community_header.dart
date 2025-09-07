@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class CommunityHeader extends StatelessWidget {
   const CommunityHeader({super.key});
@@ -9,6 +10,7 @@ class CommunityHeader extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
+          // Community icon
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
@@ -31,6 +33,8 @@ class CommunityHeader extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
+
+          // Title + dynamic member count
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -49,13 +53,31 @@ class CommunityHeader extends StatelessWidget {
                     ),
                   ),
                 ),
-                const Text(
-                  '12.5K members • 342 artists online',
-                  style: TextStyle(color: Colors.white60, fontSize: 12),
+
+                // Total members (real-time from Firestore)
+                StreamBuilder<QuerySnapshot>(
+                  stream: FirebaseFirestore.instance
+                      .collection('users')
+                      .snapshots(),
+                  builder: (context, snapshot) {
+                    int totalMembers = 0;
+                    if (snapshot.hasData) {
+                      totalMembers = snapshot.data!.docs.length;
+                    }
+                    return Text(
+                      '$totalMembers phonk members',
+                      style: const TextStyle(
+                        color: Colors.white60,
+                        fontSize: 12,
+                      ),
+                    );
+                  },
                 ),
               ],
             ),
           ),
+
+          // Just keep the favorite icon but static for now (optional)
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
@@ -67,15 +89,11 @@ class CommunityHeader extends StatelessWidget {
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.favorite,
-                  color: const Color(0xFF9F7AEA),
-                  size: 14,
-                ),
-                const SizedBox(width: 4),
-                const Text(
-                  '45.1K',
+              children: const [
+                Icon(Icons.favorite, color: Color(0xFF9F7AEA), size: 14),
+                SizedBox(width: 4),
+                Text(
+                  '', // left empty for now
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 12,
