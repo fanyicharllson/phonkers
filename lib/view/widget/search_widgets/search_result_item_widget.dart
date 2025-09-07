@@ -35,6 +35,13 @@ class _SearchResultItemWidgetState extends State<SearchResultItemWidget>
   String? _videoId;
   bool _isCurrentlyPlaying = false;
 
+  // Loading timeout management
+  Timer? _loadingTimeoutTimer;
+  bool _hasShownTimeoutMessage = false;
+  static const Duration _loadingTimeoutDuration = Duration(
+    seconds: 8,
+  ); // Configurable timeout
+
   @override
   void initState() {
     super.initState();
@@ -62,6 +69,11 @@ class _SearchResultItemWidgetState extends State<SearchResultItemWidget>
       if (mounted) {
         setState(() {
           _isPlaying = playing;
+          // If music starts playing, cancel timeout timer and reset message flag
+          if (playing && _isCurrentlyPlaying) {
+            _cancelLoadingTimeout();
+            _hasShownTimeoutMessage = false;
+          }
         });
       }
     });
@@ -72,6 +84,14 @@ class _SearchResultItemWidgetState extends State<SearchResultItemWidget>
       if (mounted) {
         setState(() {
           _isLoading = loading;
+
+          // Handle loading timeout
+          if (loading && _isCurrentlyPlaying) {
+            _startLoadingTimeout();
+          } else {
+            _cancelLoadingTimeout();
+            _hasShownTimeoutMessage = false;
+          }
         });
       }
     });
@@ -94,9 +114,96 @@ class _SearchResultItemWidgetState extends State<SearchResultItemWidget>
     _updateCurrentPlayingState();
   }
 
+  void _startLoadingTimeout() {
+    _cancelLoadingTimeout(); // Cancel any existing timer
+    _loadingTimeoutTimer = Timer(_loadingTimeoutDuration, () {
+      if (mounted &&
+          _isLoading &&
+          _isCurrentlyPlaying &&
+          !_hasShownTimeoutMessage) {
+        _hasShownTimeoutMessage = true;
+        _showLoadingTimeoutMessage();
+      }
+    });
+  }
+
+  void _cancelLoadingTimeout() {
+    _loadingTimeoutTimer?.cancel();
+    _loadingTimeoutTimer = null;
+  }
+
+  void _showLoadingTimeoutMessage() {
+    if (!mounted) return;
+
+    // final trackTitle = widget.track['snippet']?['title'] ?? 'Track';
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: Colors.orange.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(
+                Icons.hourglass_top,
+                color: Colors.orange,
+                size: 16,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'Still loading...',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                  ),
+                  Text(
+                    'Please wait, we\'re fetching the audio for you',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.8),
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: Colors.deepPurple.withValues(alpha: 0.9),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 5),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: const EdgeInsets.all(16),
+        action: SnackBarAction(
+          label: 'OK',
+          textColor: Colors.orange,
+          onPressed: () {
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          },
+        ),
+      ),
+    );
+  }
+
   void _updateCurrentPlayingState() {
     final wasPlaying = _isCurrentlyPlaying;
     _isCurrentlyPlaying = _currentPhonk?.id == _videoId;
+
+    // If no longer playing this track, cancel timeout and reset flag
+    if (wasPlaying && !_isCurrentlyPlaying) {
+      _cancelLoadingTimeout();
+      _hasShownTimeoutMessage = false;
+    }
 
     // If the playing state changed, trigger a rebuild
     if (wasPlaying != _isCurrentlyPlaying) {
@@ -114,12 +221,15 @@ class _SearchResultItemWidgetState extends State<SearchResultItemWidget>
     final newVideoId = widget.track['id']?['videoId'] ?? widget.track['id'];
     if (_videoId != newVideoId) {
       _videoId = newVideoId;
+      _cancelLoadingTimeout();
+      _hasShownTimeoutMessage = false;
       _updateCurrentPlayingState();
     }
   }
 
   @override
   void dispose() {
+    _cancelLoadingTimeout();
     _currentPhonkSubscription.cancel();
     _isPlayingSubscription.cancel();
     _isLoadingSubscription.cancel();
@@ -199,7 +309,7 @@ class _SearchResultItemWidgetState extends State<SearchResultItemWidget>
               isPlaying,
             ),
             title: _buildTitle(title, isCurrentlyPlaying),
-            subtitle: _buildSubtitle(channelTitle, description),
+            subtitle: _buildSubtitle(channelTitle, description, isLoading),
             trailing: _buildTrailingControls(
               isCurrentlyPlaying,
               isPlaying,
@@ -264,11 +374,32 @@ class _SearchResultItemWidgetState extends State<SearchResultItemWidget>
         color: Colors.black.withValues(alpha: 0.7),
         borderRadius: BorderRadius.circular(8),
       ),
-      child: const Center(
-        child: SizedBox(
-          width: 20,
-          height: 20,
-          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+      child: Center(
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                color: Colors.white,
+                strokeWidth: 2,
+              ),
+            ),
+            // Add a subtle pulsing effect for extended loading
+            if (_hasShownTimeoutMessage)
+              Container(
+                width: 30,
+                height: 30,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Colors.orange.withValues(alpha: 0.3),
+                    width: 1,
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
     );
@@ -311,7 +442,11 @@ class _SearchResultItemWidgetState extends State<SearchResultItemWidget>
     );
   }
 
-  Widget _buildSubtitle(String channelTitle, String description) {
+  Widget _buildSubtitle(
+    String channelTitle,
+    String description,
+    bool isLoading,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -321,7 +456,28 @@ class _SearchResultItemWidgetState extends State<SearchResultItemWidget>
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
-        if (description.isNotEmpty) ...[
+        // Show loading message in subtitle when appropriate
+        if (isLoading && _hasShownTimeoutMessage) ...[
+          const SizedBox(height: 2),
+          Row(
+            children: [
+              Icon(
+                Icons.hourglass_top,
+                size: 10,
+                color: Colors.orange.withValues(alpha: 0.8),
+              ),
+              const SizedBox(width: 4),
+              Text(
+                'Fetching audio...',
+                style: TextStyle(
+                  color: Colors.orange.withValues(alpha: 0.8),
+                  fontSize: 10,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ],
+          ),
+        ] else if (description.isNotEmpty) ...[
           const SizedBox(height: 4),
           Text(
             description,
@@ -350,11 +506,15 @@ class _SearchResultItemWidgetState extends State<SearchResultItemWidget>
           IconButton(
             icon: Icon(
               isLoading
-                  ? Icons.hourglass_empty
+                  ? (_hasShownTimeoutMessage
+                        ? Icons.hourglass_bottom
+                        : Icons.hourglass_empty)
                   : isPlaying
                   ? Icons.pause_circle_filled
                   : Icons.play_circle_filled,
-              color: Colors.purple,
+              color: isLoading && _hasShownTimeoutMessage
+                  ? Colors.orange
+                  : Colors.purple,
               size: 28,
             ),
             onPressed: isLoading ? null : () => _handlePlayPause(isPlaying),
@@ -365,7 +525,11 @@ class _SearchResultItemWidgetState extends State<SearchResultItemWidget>
               color: Colors.red,
               size: 24,
             ),
-            onPressed: () => AudioPlayerService.stop(),
+            onPressed: () {
+              _cancelLoadingTimeout();
+              _hasShownTimeoutMessage = false;
+              AudioPlayerService.stop();
+            },
           ),
         ],
       );
@@ -424,6 +588,9 @@ class _SearchResultItemWidgetState extends State<SearchResultItemWidget>
     if (isCurrentlyPlaying) {
       _handlePlayPause(isPlaying);
     } else {
+      // Reset timeout message flag for new track
+      _hasShownTimeoutMessage = false;
+
       // Immediately show loading before service updates
       if (mounted) {
         setState(() {
@@ -435,9 +602,7 @@ class _SearchResultItemWidgetState extends State<SearchResultItemWidget>
       final hasInternet = await hasInternetConnection();
       if (!hasInternet) {
         if (mounted) {
-          _showMessage(
-            "You lost connection! Please verify your network connection and try again.",
-          );
+          _showMessage("No internet Connection!");
         }
         return;
       }
@@ -461,12 +626,15 @@ class _SearchResultItemWidgetState extends State<SearchResultItemWidget>
         _isCurrentlyPlaying = false;
       });
     }
+    _cancelLoadingTimeout();
+    _hasShownTimeoutMessage = false;
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message, style: TextStyle(color: Colors.white)),
+        content: Text(message, style: const TextStyle(color: Colors.white)),
         backgroundColor: Colors.deepPurple.withValues(alpha: 0.8),
         behavior: SnackBarBehavior.floating,
-        duration: Duration(seconds: 10),
+        duration: const Duration(seconds: 10),
       ),
     );
   }

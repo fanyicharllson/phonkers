@@ -90,7 +90,7 @@ class _SearchScreenState extends State<SearchScreen>
         _recentSearches = searches;
       });
     } catch (e) {
-      print('Error loading recent searches: $e');
+      debugPrint('Error loading recent searches: $e');
     }
   }
 
@@ -115,7 +115,7 @@ class _SearchScreenState extends State<SearchScreen>
         _recentSearches = searches;
       });
     } catch (e) {
-      print('Error saving recent search: $e');
+      debugPrint('Error saving recent search: $e');
     }
   }
 
@@ -127,7 +127,7 @@ class _SearchScreenState extends State<SearchScreen>
         _recentSearches = [];
       });
     } catch (e) {
-      print('Error clearing recent searches: $e');
+      debugPrint('Error clearing recent searches: $e');
     }
   }
 
