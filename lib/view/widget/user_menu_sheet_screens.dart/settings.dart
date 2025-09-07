@@ -14,7 +14,7 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _notificationsEnabled = true;
-  bool _darkModeEnabled = true;
+  // bool _darkModeEnabled = true;
   double _volume = 0.8;
 
   @override
@@ -42,15 +42,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   setState(() => _notificationsEnabled = value);
                 },
               ),
-              _buildSwitchTile(
-                icon: Icons.dark_mode_outlined,
-                title: 'Dark Mode',
-                subtitle: 'Use dark theme',
-                value: _darkModeEnabled,
-                onChanged: (value) {
-                  setState(() => _darkModeEnabled = value);
-                },
-              ),
+              // _buildSwitchTile(
+              //   icon: Icons.dark_mode_outlined,
+              //   title: 'Dark Mode',
+              //   subtitle: 'Use dark theme',
+              //   value: _darkModeEnabled,
+              //   onChanged: (value) {
+              //     setState(() => _darkModeEnabled = value);
+              //   },
+              // ),
             ],
           ),
 

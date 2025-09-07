@@ -35,7 +35,7 @@ class _LibraryScreenState extends State<LibraryScreen>
                 style: TextStyle(color: Colors.white, fontSize: 24),
               ),
               Text(
-                "Coming Soon!",
+                "We are working actively on this feature. Stay tuned.",
                 style: TextStyle(color: Colors.white70, fontSize: 16),
               ),
             ],
