@@ -133,10 +133,10 @@ class _FeaturedPhonkCardState extends State<FeaturedPhonkCard>
     _timeoutTimer?.cancel();
 
     // Start timeout timer (5s)
-    _timeoutTimer = Timer(const Duration(seconds: 5), () {
+    _timeoutTimer = Timer(const Duration(seconds: 3), () {
       if (mounted && _isLoadingPhonk && !_hasShownTimeoutMessage) {
         _hasShownTimeoutMessage = true;
-        _showMessage("Still loading... please wait a moment");
+        _showMessage("Still loading... please wait a moment", isSuccess: true);
       }
     });
 
@@ -435,7 +435,10 @@ class _FeaturedPhonkCardState extends State<FeaturedPhonkCard>
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(20),
@@ -453,13 +456,13 @@ class _FeaturedPhonkCardState extends State<FeaturedPhonkCard>
               ),
             ],
           ),
-      
+
           // Track info
           FeaturedPhonkInfo(
             phonk: _featuredPhonk!,
             isCurrentlyPlaying: _isCurrentlyPlaying,
           ),
-      
+
           // Controls
           FeaturedPhonkControls(
             isCurrentlyPlaying: _isCurrentlyPlaying,
