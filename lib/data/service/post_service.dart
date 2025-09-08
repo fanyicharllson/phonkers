@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
 
 class PostService {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -166,8 +167,8 @@ class PostService {
     final userDoc = await _firestore.collection('users').doc(user.uid).get();
     final userData = userDoc.data() ?? {};
 
-    print("User Data to be save in comment: $userData");
-    print("User profile image url: $userData['profileImageUrl']");
+    debugPrint("User Data to be save in comment: $userData");
+    debugPrint("User profile image url: $userData['profileImageUrl']");
 
     final commentData = {
       'id': '',

@@ -1,7 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
 import 'package:phonkers/data/model/phonk.dart';
 import 'package:phonkers/data/service/spotify_api_service.dart';
+import 'package:phonkers/data/service/youtube_api_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class PhonkService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -13,43 +16,54 @@ class PhonkService {
     try {
       List<Phonk> allPhonks = [];
 
-      // Try multiple search queries to find tracks with previews
-      final queries = [
-        'vision udieNnx',
-        'lxngvx',
-        'eloy nvxos',
-        'akai',
-        'cala buka',
-        'haza'
-      ];
+      // 1. Load recent searches
+      final prefs = await SharedPreferences.getInstance();
+      final recentSearches = prefs.getStringList('recent_searches') ?? [];
 
+      debugPrint("Recent search: $recentSearches --debugPrint");
+
+      // 2. Build queries
+      final queries = recentSearches.isNotEmpty
+          ? recentSearches.take(3).map((q) => "$q phonk").toList()
+          : ["phonk trending", "drift phonk", "dark phonk", "phonk", "funk"];
+
+      // 3. Use YouTube as the primary source
       for (String query in queries) {
-        final spotifyTracks = await SpotifyApiService.searchPhonkTracks(
+        final youtubeResults = await YouTubeApiService.searchVideos(
           query: query,
-          limit: 4,
+          maxResults: 8,
         );
 
-        final phonks = spotifyTracks
-            .map((track) => Phonk.fromSpotify(track))
-            .toList();
-        print("Trending phonk been search: ${phonks.map((p) => p.title).join(", ")}");
-        allPhonks.addAll(phonks);
+        debugPrint(
+          "YouTube results for '$query': ${youtubeResults.map((v) => v['snippet']?['title']).toList()}",
+        );
 
-        // Stop if we have enough tracks with some previews
-        final withPreviews = allPhonks.where((p) => p.hasPreview).length;
-        if (withPreviews >= 3 || allPhonks.length >= limit) break;
+        for (final video in youtubeResults) {
+          if (video['id']?['videoId'] != null) {
+            allPhonks.add(Phonk.fromYouTube(video));
+          }
+        }
+
+        if (allPhonks.length >= limit) break;
       }
 
-      // Sort to show tracks with previews first
-      allPhonks.sort((a, b) {
-        if (a.hasPreview && !b.hasPreview) return -1;
-        if (!a.hasPreview && b.hasPreview) return 1;
-        return 0;
-      });
+      // 4. Deduplicate (by title/artist)
+      final seen = <String>{};
+      allPhonks = allPhonks.where((p) {
+        final key = "${p.title}-${p.artist}".toLowerCase();
+        if (seen.contains(key)) return false;
+        seen.add(key);
+        return true;
+      }).toList();
 
+      // 5. Shuffle
+      allPhonks.shuffle();
+      debugPrint(
+        "Trending phonks (YouTube-first): ${allPhonks.map((p) => p.title).toList()} --debugPrint",
+      );
       return allPhonks.take(limit).toList();
     } catch (e) {
-      print('Error fetching trending phonks: $e');
+      debugPrint('Error fetching YouTube trending phonks: $e');
       return [];
     }
   }
@@ -67,7 +81,7 @@ class PhonkService {
           .where((phonk) => phonk.hasPreview)
           .toList();
     } catch (e) {
-      print('Error fetching new phonks: $e');
+      debugPrint('Error fetching new phonks: $e');
       return [];
     }
   }
@@ -82,7 +96,7 @@ class PhonkService {
 
       return spotifyTracks.map((track) => Phonk.fromSpotify(track)).toList();
     } catch (e) {
-      print('Error searching phonks: $e');
+      debugPrint('Error searching phonks: $e');
       return [];
     }
   }
@@ -95,7 +109,7 @@ class PhonkService {
         return Phonk.fromSpotify(trackData);
       }
     } catch (e) {
-      print('Error getting phonk by ID: $e');
+      debugPrint('Error getting phonk by ID: $e');
     }
     return null;
   }
@@ -110,7 +124,7 @@ class PhonkService {
           .doc(phonk.id)
           .set(phonk.toFirestore());
     } catch (e) {
-      print('Error adding to favorites: $e');
+      debugPrint('Error adding to favorites: $e');
     }
   }
 
@@ -124,7 +138,7 @@ class PhonkService {
           .doc(phonkId)
           .delete();
     } catch (e) {
-      print('Error removing from favorites: $e');
+      debugPrint('Error removing from favorites: $e');
     }
   }
 
@@ -152,7 +166,7 @@ class PhonkService {
           .get();
       return doc.exists;
     } catch (e) {
-      print('Error checking favorite status: $e');
+      debugPrint('Error checking favorite status: $e');
       return false;
     }
   }
@@ -162,7 +176,7 @@ class PhonkService {
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) {
-        print('User not authenticated, skipping play count increment');
+        debugPrint('User not authenticated, skipping play count increment');
         return;
       }
 
@@ -190,78 +204,78 @@ class PhonkService {
         }
       });
     } catch (e) {
-      print('Error incrementing play count (non-critical): $e');
+      debugPrint('Error incrementing play count (non-critical): $e');
       // Don't throw the error - this is non-critical functionality
     }
   }
 
   // Get phonks by different categories
-  Future<List<Phonk>> getPhonksByCategory(
-    String category, {
-    int limit = 10,
-  }) async {
-    try {
-      String query;
-      switch (category.toLowerCase()) {
-        case 'drift':
-          query = 'drift phonk';
-          break;
-        case 'dark':
-          query = 'dark phonk';
-          break;
-        case 'house':
-          query = 'house phonk';
-          break;
-        case 'aggressive':
-          query = 'aggressive phonk';
-          break;
-        default:
-          query = 'phonk $category';
-      }
+  // Future<List<Phonk>> getPhonksByCategory(
+  //   String category, {
+  //   int limit = 10,
+  // }) async {
+  //   try {
+  //     String query;
+  //     switch (category.toLowerCase()) {
+  //       case 'drift':
+  //         query = 'drift phonk';
+  //         break;
+  //       case 'dark':
+  //         query = 'dark phonk';
+  //         break;
+  //       case 'house':
+  //         query = 'house phonk';
+  //         break;
+  //       case 'aggressive':
+  //         query = 'aggressive phonk';
+  //         break;
+  //       default:
+  //         query = 'phonk $category';
+  //     }
 
-      final spotifyTracks = await SpotifyApiService.searchPhonkTracks(
-        query: query,
-        limit: limit,
-      );
+  //     final spotifyTracks = await SpotifyApiService.searchPhonkTracks(
+  //       query: query,
+  //       limit: limit,
+  //     );
 
-      return spotifyTracks
-          .map((track) => Phonk.fromSpotify(track))
-          .where((phonk) => phonk.hasPreview)
-          .toList();
-    } catch (e) {
-      print('Error fetching phonks by category: $e');
-      return [];
-    }
-  }
+  //     return spotifyTracks
+  //         .map((track) => Phonk.fromSpotify(track))
+  //         .where((phonk) => phonk.hasPreview)
+  //         .toList();
+  //   } catch (e) {
+  //     debugPrint('Error fetching phonks by category: $e');
+  //     return [];
+  //   }
+  // }
 
   // Get random phonks for discover section
-  Future<List<Phonk>> getRandomPhonks({int limit = 5}) async {
-    try {
-      final queries = [
-        'phonk mix',
-        'drift phonk',
-        'dark phonk',
-        'phonk beats',
-        'brazilian phonk',
-      ];
+  // Future<List<Phonk>> getRandomPhonks({int limit = 5}) async {
+  //   try {
+  //     final queries = [
+  //       'phonk mix',
+  //       'drift phonk',
+  //       'dark phonk',
+  //       'phonk beats',
+  //       'brazilian phonk',
+  //     ];
 
-      final randomQuery = queries[DateTime.now().millisecond % queries.length];
+  //     final randomQuery = queries[DateTime.now().millisecond % queries.length];
 
-      final spotifyTracks = await SpotifyApiService.searchPhonkTracks(
-        query: randomQuery,
-        limit: limit,
-      );
+  //     final spotifyTracks = await SpotifyApiService.searchPhonkTracks(
+  //       query: randomQuery,
+  //       limit: limit,
+  //     );
 
-      final phonks = spotifyTracks
-          .map((track) => Phonk.fromSpotify(track))
-          .where((phonk) => phonk.hasPreview)
-          .toList();
+  //     final phonks = spotifyTracks
+  //         .map((track) => Phonk.fromSpotify(track))
+  //         .where((phonk) => phonk.hasPreview)
+  //         .toList();
 
-      phonks.shuffle();
-      return phonks.take(limit).toList();
-    } catch (e) {
-      print('Error fetching random phonks: $e');
-      return [];
-    }
-  }
+  //     phonks.shuffle();
+  //     return phonks.take(limit).toList();
+  //   } catch (e) {
+  //     debugPrint('Error fetching random phonks: $e');
+  //     return [];
+  //   }
+  // }
 }

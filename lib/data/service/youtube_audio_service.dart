@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:phonkers/data/service/youtube_api_service.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 
@@ -7,13 +8,13 @@ class YouTubeAudioService {
   // Get audio stream URL from YouTube video
   static Future<String?> getAudioStreamUrl(String videoId) async {
     try {
-      print('Getting manifest for video: $videoId');
+      debugPrint('Getting manifest for video: $videoId');
       final manifest = await _ytExplode.videos.streamsClient.getManifest(
         videoId,
       );
 
-      print('Audio streams count: ${manifest.audioOnly.length}');
-      print('Muxed streams count: ${manifest.muxed.length}');
+      debugPrint('Audio streams count: ${manifest.audioOnly.length}');
+      debugPrint('Muxed streams count: ${manifest.muxed.length}');
 
       // Get the best audio-only stream
       final audioStreams = manifest.audioOnly;
@@ -25,8 +26,10 @@ class YouTubeAudioService {
         );
         final bestAudio = audioStreamsList.first;
 
-        print('Found audio stream for video $videoId: ${bestAudio.bitrate}');
-        print('Audio URL: ${bestAudio.url}');
+        debugPrint(
+          'Found audio stream for video $videoId: ${bestAudio.bitrate}',
+        );
+        debugPrint('Audio URL: ${bestAudio.url}');
         return bestAudio.url.toString();
       }
 
@@ -40,15 +43,17 @@ class YouTubeAudioService {
         );
         final bestMixed = muxedStreamsList.first;
 
-        print('Using mixed stream for video $videoId: ${bestMixed.bitrate}');
-        print('Mixed URL: ${bestMixed.url}');
+        debugPrint(
+          'Using mixed stream for video $videoId: ${bestMixed.bitrate}',
+        );
+        debugPrint('Mixed URL: ${bestMixed.url}');
         return bestMixed.url.toString();
       }
 
-      print('No suitable streams found for video: $videoId');
+      debugPrint('No suitable streams found for video: $videoId');
       return null;
     } catch (e) {
-      print('Error getting YouTube audio stream: $e');
+      debugPrint('Error getting YouTube audio stream: $e');
       return null;
     }
   }
@@ -67,7 +72,7 @@ class YouTubeAudioService {
       );
 
       if (videos.isEmpty) {
-        print('No YouTube videos found for: $query');
+        debugPrint('No YouTube videos found for: $query');
         return null;
       }
 
@@ -87,7 +92,7 @@ class YouTubeAudioService {
 
       return null;
     } catch (e) {
-      print('Error searching YouTube for audio: $e');
+      debugPrint('Error searching YouTube for audio: $e');
       return null;
     }
   }

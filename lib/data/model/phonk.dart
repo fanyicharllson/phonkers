@@ -37,10 +37,12 @@ class Phonk {
 
   // Create Phonk from Spotify track data
   factory Phonk.fromSpotify(Map<String, dynamic> spotifyTrack) {
-    final artists = (spotifyTrack['artists'] as List?)
-        ?.map((artist) => artist['name'] as String)
-        .join(', ') ?? 'Unknown Artist';
-    
+    final artists =
+        (spotifyTrack['artists'] as List?)
+            ?.map((artist) => artist['name'] as String)
+            .join(', ') ??
+        'Unknown Artist';
+
     final albumImages = spotifyTrack['album']?['images'] as List?;
     String? albumArt;
     if (albumImages != null && albumImages.isNotEmpty) {
@@ -48,10 +50,11 @@ class Phonk {
     }
 
     final title = spotifyTrack['name'] as String;
-    
+
     // Generate YouTube search URL for full track
     final youtubeQuery = Uri.encodeComponent('$title $artists phonk');
-    final youtubeSearchUrl = 'https://www.youtube.com/results?search_query=$youtubeQuery';
+    final youtubeSearchUrl =
+        'https://www.youtube.com/results?search_query=$youtubeQuery';
 
     return Phonk(
       id: spotifyTrack['id'] as String,
@@ -91,6 +94,29 @@ class Phonk {
       isNew: data['isNew'] ?? false,
       genre: data['genre'] ?? 'phonk',
       source: data['source'] ?? 'spotify',
+    );
+  }
+
+  // Create Phonk from YouTube video data
+  factory Phonk.fromYouTube(Map<String, dynamic> video) {
+    return Phonk(
+      id: video['id']?['videoId'] ?? '',
+      title: video['snippet']?['title'] ?? 'Unknown',
+      artist: video['snippet']?['channelTitle'] ?? 'YouTube Artist',
+      albumArt: video['snippet']?['thumbnails']?['medium']?['url'],
+      previewUrl: null, // If you later resolve audio stream, set it here
+      duration:
+          0, // YouTube API doesn’t give duration in search results unless you call videos.list with part=contentDetails
+      spotifyUrl: null,
+      youtubeUrl:
+          "https://www.youtube.com/watch?v=${video['id']?['videoId'] ?? ''}",
+      albumName: null,
+      hasPreview: false, // true only if you resolve playable preview
+      plays: 0,
+      uploadDate: DateTime.tryParse(video['snippet']?['publishedAt'] ?? ''),
+      isNew: true,
+      genre: 'phonk',
+      source: 'youtube',
     );
   }
 
