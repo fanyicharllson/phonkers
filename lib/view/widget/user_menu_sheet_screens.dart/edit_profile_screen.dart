@@ -36,6 +36,7 @@ class _EditProfileScreenState extends State<EditProfileScreen>
 
   Future<void> _checkNetworkAndLoad() async {
     final hasInternet = await hasInternetConnection();
+    if (!mounted) return;
     setState(() {
       _hasNetworkConnection = hasInternet;
     });
@@ -128,7 +129,7 @@ class _EditProfileScreenState extends State<EditProfileScreen>
               onTap: () => _selectImage(ImageSource.gallery),
             ),
             //! Tobe implemented*****************************************
-            // ListTile( 
+            // ListTile(
             //   leading: const Icon(Icons.camera_alt, color: Colors.white70),
             //   title: const Text(
             //     'Take Photo',

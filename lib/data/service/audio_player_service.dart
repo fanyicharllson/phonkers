@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter/material.dart';
 import 'package:phonkers/data/model/phonk.dart';
 import 'package:phonkers/data/service/phonk_service.dart';
 import 'package:phonkers/data/service/youtube_audio_service.dart';
@@ -74,14 +75,14 @@ class AudioPlayerService {
 
     // Add error handling
     _audioPlayer.onLog.listen((message) {
-      print('AudioPlayer Log: $message');
+      debugPrint('AudioPlayer Log: $message');
     });
   }
 
   static void _setLoadingState(bool loading) {
     _isLoading = loading;
     _isLoadingController.add(loading);
-    print('Loading state changed to: $loading'); // Debug log
+    debugPrint('Loading state changed to: $loading'); // Debug log
   }
 
   // Enhanced playPhonk method with YouTube fallback
@@ -137,7 +138,7 @@ class AudioPlayerService {
 
       return _handleCancelled();
     } catch (e) {
-      print('Error playing phonk: $e');
+      debugPrint('Error playing phonk: $e');
       return PlayResult.error;
     } finally {
       _isInitiatingPlayback = false;
@@ -161,7 +162,7 @@ class AudioPlayerService {
         await _audioPlayer.stop();
         await _audioPlayer.play(UrlSource(youtubeData['audioUrl']));
 
-        print('Playing from YouTube: ${youtubeData['title']}');
+        debugPrint('Playing from YouTube: ${youtubeData['title']}');
         return PlayResult.success;
       }
 
@@ -169,7 +170,7 @@ class AudioPlayerService {
       _setLoadingState(false);
       return PlayResult.error;
     } catch (e) {
-      print('Error playing from YouTube: $e');
+      debugPrint('Error playing from YouTube: $e');
       _isInitiatingPlayback = false;
       _setLoadingState(false);
       return PlayResult.error;

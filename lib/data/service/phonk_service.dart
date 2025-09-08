@@ -15,11 +15,12 @@ class PhonkService {
 
       // Try multiple search queries to find tracks with previews
       final queries = [
-        'phonk drift',
-        'brazilian phonk',
-        'house phonk',
-        'electronic dance music phonk',
-        'phonk trap bass',
+        'vision udieNnx',
+        'lxngvx',
+        'eloy nvxos',
+        'akai',
+        'cala buka',
+        'haza'
       ];
 
       for (String query in queries) {
