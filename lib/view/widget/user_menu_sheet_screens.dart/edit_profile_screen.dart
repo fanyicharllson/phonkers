@@ -21,7 +21,7 @@ class _EditProfileScreenState extends State<EditProfileScreen>
   final _emailController = TextEditingController();
 
   bool _isLoading = false;
-  bool _isUploadingImage = false;
+  final bool _isUploadingImage = false;
   bool _hasNetworkConnection = true;
   bool _isSavingProfile = false;
   ProfileChangeDetector? _changeDetector;
@@ -240,7 +240,7 @@ class _EditProfileScreenState extends State<EditProfileScreen>
   }
 
   void _showErrorSnackBar(String message) {
-    print("Error that occured: ${message}");
+    print("Error that occured: $message");
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message, style: TextStyle(color: Colors.white)),

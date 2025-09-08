@@ -104,7 +104,7 @@ class _CommunityScreenState extends State<CommunityScreen>
 
               // Tab Content - This is the key fix
               Expanded(
-                child: Container(
+                child: SizedBox(
                   width: double.infinity,
                   child: TabBarView(
                     controller: _tabController,

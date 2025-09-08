@@ -4,6 +4,7 @@ import 'package:phonkers/view/widget/network_widget/network_aware_mixin.dart';
 import 'package:phonkers/view/widget/trending_phonk_card.dart';
 import 'package:phonkers/data/model/phonk.dart';
 import 'package:phonkers/data/service/audio_player_service.dart';
+import 'package:phonkers/view/widget/trending_phonk_widgets/trending_phonks_bottum_sheets.dart';
 
 class TrendingSection extends StatefulWidget {
   const TrendingSection({super.key});
@@ -34,22 +35,24 @@ class _TrendingSectionState extends State<TrendingSection>
         _isNetworkError = false;
       });
 
-      // Check internet connection first
-      final hasInternet = await hasInternetConnection();
-      if (!hasInternet) {
-        if (mounted) {
-          setState(() {
-            _error = 'No internet connection';
-            _isNetworkError = true;
-            _isLoading = false;
-          });
-        }
-        return;
-      }
+      // Use executeWithNetworkCheck for consistent network handling
+      final phonks = await executeWithNetworkCheck(
+        action: () async {
+          return await _phonkService.getTrendingPhonks(limit: 10);
+        },
+        onNoInternet: () {
+          if (mounted) {
+            setState(() {
+              _error = 'No internet connection';
+              _isNetworkError = true;
+              _isLoading = false;
+            });
+          }
+        },
+        showSnackBar: false, // Handle in UI instead
+      );
 
-      final phonks = await _phonkService.getTrendingPhonks(limit: 10);
-
-      if (mounted) {
+      if (phonks != null && mounted) {
         setState(() {
           _trendingPhonks = phonks;
           _isLoading = false;
@@ -57,7 +60,6 @@ class _TrendingSectionState extends State<TrendingSection>
       }
     } catch (e) {
       if (mounted) {
-        // Check if it's a network-related error
         final hasInternet = await hasInternetConnection();
         setState(() {
           _error = hasInternet
@@ -67,8 +69,12 @@ class _TrendingSectionState extends State<TrendingSection>
           _isLoading = false;
         });
       }
-      print('Error loading trending phonks: $e');
+      debugPrint('Error loading trending phonks: $e');
     }
+  }
+
+  void _showAllTrendingPhonks() {
+    TrendingPhonksBottomSheet.show(context);
   }
 
   @override
@@ -82,22 +88,35 @@ class _TrendingSectionState extends State<TrendingSection>
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text(
-                "🔥🔥Trending Phonks",
+                "🔥 Trending Phonks",
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              TextButton(
-                onPressed: () {
-                  // Navigate to see all trending phonks
-                },
-                child: Text(
+              TextButton.icon(
+                onPressed: _showAllTrendingPhonks,
+                icon: const Icon(
+                  Icons.arrow_upward,
+                  color: Colors.purple,
+                  size: 16,
+                ),
+                label: Text(
                   "See all",
                   style: TextStyle(
                     color: Colors.purple[300],
                     fontWeight: FontWeight.w500,
+                  ),
+                ),
+                style: TextButton.styleFrom(
+                  backgroundColor: Colors.purple.withValues(alpha: 0.1),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
                   ),
                 ),
               ),
@@ -198,7 +217,7 @@ class _TrendingSectionState extends State<TrendingSection>
     final result = await executeWithNetworkCheck(
       action: () async {
         final playResult = await AudioPlayerService.playPhonk(phonk);
-        print('Play result in handlePhonkTap: $playResult');
+        debugPrint('Play result in handlePhonkTap: $playResult');
         return playResult;
       },
       onNoInternet: () {
@@ -209,10 +228,20 @@ class _TrendingSectionState extends State<TrendingSection>
               children: [
                 Icon(Icons.wifi_off, color: Colors.white),
                 SizedBox(width: 12),
-                Text('Internet connection required for audio playback'),
+                Expanded(
+                  child: Text(
+                    'Internet connection required for audio playback',
+                  ),
+                ),
               ],
             ),
             backgroundColor: Colors.orange,
+            behavior: SnackBarBehavior.floating,
+            action: SnackBarAction(
+              label: 'Retry',
+              textColor: Colors.white,
+              onPressed: () => _handlePhonkTap(phonk),
+            ),
           ),
         );
       },
@@ -226,6 +255,7 @@ class _TrendingSectionState extends State<TrendingSection>
           SnackBar(
             content: Text('Playing preview: ${phonk.title} by ${phonk.artist}'),
             backgroundColor: Colors.purple,
+            behavior: SnackBarBehavior.floating,
             action: SnackBarAction(
               label: 'Stop',
               textColor: Colors.white,
@@ -245,13 +275,17 @@ class _TrendingSectionState extends State<TrendingSection>
                 SizedBox(
                   width: 20,
                   height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
                 ),
                 SizedBox(width: 10),
                 Text('Loading audio...'),
               ],
             ),
             backgroundColor: Colors.blue,
+            behavior: SnackBarBehavior.floating,
             duration: const Duration(seconds: 3),
           ),
         );
@@ -266,6 +300,7 @@ class _TrendingSectionState extends State<TrendingSection>
           SnackBar(
             content: Text('Error playing ${phonk.title}'),
             backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
           ),
         );
         break;
@@ -277,7 +312,10 @@ class _TrendingSectionState extends State<TrendingSection>
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          backgroundColor: Colors.grey[900],
+          backgroundColor: const Color(0xFF1E0A2E),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           title: const Text(
             'No Preview Available',
             style: TextStyle(color: Colors.white),
@@ -305,11 +343,14 @@ class _TrendingSectionState extends State<TrendingSection>
               TextButton.icon(
                 onPressed: () {
                   Navigator.pop(context);
-                  print('Opening Spotify: ${phonk.spotifyUrl}');
+                  debugPrint('Opening Spotify: ${phonk.spotifyUrl}');
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text('Opening in Spotify...'),
+                      content: Text('Feature coming Soon!',
+                      style: TextStyle(color: Colors.white), 
+                      ),
                       backgroundColor: Colors.green,
+                      behavior: SnackBarBehavior.floating,
                     ),
                   );
                 },
@@ -322,11 +363,15 @@ class _TrendingSectionState extends State<TrendingSection>
             TextButton.icon(
               onPressed: () {
                 Navigator.pop(context);
-                print('Searching YouTube: ${phonk.youtubeUrl}');
+                debugPrint('Searching YouTube: ${phonk.youtubeUrl}');
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                    content: Text('Opening YouTube search...'),
+                    content: Text(
+                      'Feature coming Soon!',
+                      style: TextStyle(color: Colors.white),
+                    ),
                     backgroundColor: Colors.red,
+                    behavior: SnackBarBehavior.floating,
                   ),
                 );
               },
