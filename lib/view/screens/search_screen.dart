@@ -11,7 +11,9 @@ import 'package:phonkers/data/service/audio_player_service.dart';
 import 'package:phonkers/data/model/phonk.dart';
 
 class SearchScreen extends StatefulWidget {
-  const SearchScreen({super.key});
+  const SearchScreen({super.key, this.initialQuery = ''});
+
+  final String initialQuery;
 
   @override
   State<SearchScreen> createState() => _SearchScreenState();
@@ -356,6 +358,9 @@ class _SearchScreenState extends State<SearchScreen>
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    debugPrint(
+      "Current notification query been passed: ${widget.initialQuery} --debugPrint",
+    );
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
@@ -400,6 +405,7 @@ class _SearchScreenState extends State<SearchScreen>
               onClear: clearSearch,
               slideAnimation: _slideAnimation,
               fadeAnimation: _fadeAnimation,
+              initialQuery: widget.initialQuery,
             ),
             const SizedBox(height: 16),
             SearchButtonWidget(

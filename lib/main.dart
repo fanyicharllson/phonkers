@@ -10,8 +10,17 @@ import 'package:phonkers/view/pages/welcome_info_page.dart';
 import 'package:phonkers/view/pages/welcome_page.dart';
 
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:phonkers/view/screens/search_screen.dart';
+
 import 'package:phonkers/view/widget/network_widget/network_status_listener.dart';
 import 'firebase_options.dart';
+
+// 🔔 Background handler (when push comes and app is terminated/in background)
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
+  debugPrint("Handling background message: ${message.messageId}");
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,7 +28,10 @@ void main() async {
   // Initialize Firebase
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
-  // Initialize Network Service first (it's a singleton)
+  // Register background handler
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+  // Initialize Network Service first (singleton)
   final networkService = NetworkStatusService();
   await networkService.initialize();
 
@@ -28,7 +40,7 @@ void main() async {
   YouTubeApiService.initialize();
   await AudioPlayerService.initialize();
 
-  // Test API connections (with network check)
+  // Test API connections if online
   if (networkService.isOnline) {
     final isSpotifyWorking = await SpotifyApiService.testConnection();
     final isYouTubeWorking = await YouTubeApiService.testConnection();
@@ -57,12 +69,70 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+
+    _setupNotifications();
+    _checkInitialMessage();
+    _listenForNotificationClicks();
+  }
+
+  /// 🔔 Setup FCM
+  void _setupNotifications() async {
+    FirebaseMessaging messaging = FirebaseMessaging.instance;
+
+    // iOS permission
+    await messaging.requestPermission();
+
+    // Subscribe all users to trending phonks
+    await messaging.subscribeToTopic("trending-phonks");
+  }
+
+  /// 🔔 Cold start (app opened by tapping notification when closed)
+  void _checkInitialMessage() async {
+    RemoteMessage? initialMessage = await FirebaseMessaging.instance
+        .getInitialMessage();
+
+    if (initialMessage != null && initialMessage.data['phonkTitle'] != null) {
+      final phonkTitle = initialMessage.data['phonkTitle'];
+      _goToSearch(phonkTitle);
+    }
+  }
+
+  /// 🔔 Handle notification taps and foreground messages
+  void _listenForNotificationClicks() {
+    // Background → tap notification
+    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+      final phonkTitle = message.data['phonkTitle'];
+      if (phonkTitle != null) {
+        _goToSearch(phonkTitle);
+      }
+    });
+
+    // Foreground → app is open
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      if (message.notification != null) {
+        debugPrint("Foreground push: ${message.notification!.title}");
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(message.notification!.title ?? "New Trending Phonk"),
+            backgroundColor: Colors.purple,
+          ),
+        );
+      }
+    });
+  }
+
+  /// Navigate to SearchScreen with initial query
+  void _goToSearch(String phonkName) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => SearchScreen(initialQuery: phonkName)),
+    );
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    // Don't dispose the network service here as it's a singleton
     super.dispose();
   }
 
@@ -70,7 +140,6 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     switch (state) {
       case AppLifecycleState.resumed:
-        // App is back in foreground - refresh network status
         debugPrint('App resumed');
         _networkService.refreshStatus();
         break;
@@ -78,11 +147,9 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         debugPrint('App paused');
         break;
       case AppLifecycleState.detached:
-        // App is being killed - clean up
         _networkService.dispose();
         break;
       case AppLifecycleState.inactive:
-        break;
       case AppLifecycleState.hidden:
         break;
     }

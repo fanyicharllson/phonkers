@@ -49,6 +49,7 @@ dependencies:
   connectivity_plus: ^6.1.5
   internet_connection_checker: ^3.0.1
   image_picker: ^1.2.0
+  firebase_messaging: ^16.0.1
 
 dev_dependencies:
   flutter_test:

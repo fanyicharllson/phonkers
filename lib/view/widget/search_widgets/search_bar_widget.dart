@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 
-class SearchBarWidget extends StatelessWidget {
+class SearchBarWidget extends StatefulWidget {
   final TextEditingController controller;
   final FocusNode focusNode;
   final VoidCallback onSearch;
   final VoidCallback onClear;
   final Animation<Offset> slideAnimation;
   final Animation<double> fadeAnimation;
+  final String
+  initialQuery; //! this is parameter that will recieve the query title to perform search from notification(trending phonk notification)
 
   const SearchBarWidget({
     super.key,
@@ -16,14 +18,31 @@ class SearchBarWidget extends StatelessWidget {
     required this.onClear,
     required this.slideAnimation,
     required this.fadeAnimation,
+    this.initialQuery = '',
   });
+
+  @override
+  State<SearchBarWidget> createState() => _SearchBarWidgetState();
+}
+
+class _SearchBarWidgetState extends State<SearchBarWidget> {
+  @override
+  void initState() {
+    super.initState();
+    // ✅ If initialQuery is provided, set it into the controller once
+    if (widget.initialQuery.isNotEmpty) {
+      widget.controller.text = widget.initialQuery;
+    } else {
+      debugPrint("No initial query provided(from trending phonk notification): ${widget.initialQuery}");
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return SlideTransition(
-      position: slideAnimation,
+      position: widget.slideAnimation,
       child: FadeTransition(
-        opacity: fadeAnimation,
+        opacity: widget.fadeAnimation,
         child: Container(
           margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
           decoration: BoxDecoration(
@@ -37,25 +56,27 @@ class SearchBarWidget extends StatelessWidget {
             ],
           ),
           child: ListenableBuilder(
-            listenable: controller,
+            listenable: widget.controller,
             builder: (context, child) {
               return TextField(
-                controller: controller,
-                focusNode: focusNode,
+                controller: widget.controller,
+                focusNode: widget.focusNode,
                 autofocus: false,
                 style: const TextStyle(color: Colors.white, fontSize: 16),
                 decoration: InputDecoration(
                   hintText: 'Search for phonks... (Artist - Title)',
-                  hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.6)),
+                  hintStyle: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.6),
+                  ),
                   prefixIcon: const Icon(
                     Icons.search,
                     color: Colors.purple,
                     size: 24,
                   ),
-                  suffixIcon: controller.text.isNotEmpty
+                  suffixIcon: widget.controller.text.isNotEmpty
                       ? IconButton(
                           icon: const Icon(Icons.clear, color: Colors.white70),
-                          onPressed: onClear,
+                          onPressed: widget.onClear,
                         )
                       : null,
                   filled: true,
@@ -83,7 +104,7 @@ class SearchBarWidget extends StatelessWidget {
                   ),
                 ),
                 textInputAction: TextInputAction.search,
-                onSubmitted: (_) => onSearch(),
+                onSubmitted: (_) => widget.onSearch(),
               );
             },
           ),
