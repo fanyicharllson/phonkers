@@ -68,7 +68,7 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet>
 
     try {
       // Post to Firestore
-      final actualCommentId = await executeWithNetworkCheck(
+      await executeWithNetworkCheck(
         action: () => PostService.addComment(
           postId: widget.post['id'],
           content: commentText,

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:phonkers/data/service/notification_service.dart';
+import 'package:phonkers/view/screens/community_screen.dart';
 import 'package:phonkers/view/screens/search_screen.dart';
+import 'package:phonkers/view/widget/community_widget/community_feed_highlighter.dart';
+import 'package:phonkers/view/widget/community_widget/community_navigation_service.dart';
 
 class NotificationsSheet extends StatefulWidget {
   const NotificationsSheet({super.key});
@@ -152,7 +155,7 @@ class _NotificationsSheetState extends State<NotificationsSheet> {
           ),
           const SizedBox(height: 8),
           Text(
-            'We\'ll notify you about trending phonks\nand new releases here',
+            'We\'ll notify you about trending phonks\nand community posts here',
             textAlign: TextAlign.center,
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.5),
@@ -165,6 +168,8 @@ class _NotificationsSheetState extends State<NotificationsSheet> {
   }
 
   Widget _buildNotificationTile(PhonkNotification notification) {
+    final isPostNotification = notification.type == 'new_post';
+
     return Dismissible(
       key: Key(notification.id),
       direction: DismissDirection.endToStart,
@@ -235,14 +240,27 @@ class _NotificationsSheetState extends State<NotificationsSheet> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 4),
-              Text(
-                'Phonk: ${notification.phonkTitle}',
-                style: TextStyle(
-                  color: Colors.purple.withValues(alpha: 0.8),
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
+              if (isPostNotification) ...[
+                Text(
+                  'Post: ${notification.phonkTitle}',
+                  style: TextStyle(
+                    color: Colors.purple.withValues(alpha: 0.8),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
+              ] else ...[
+                Text(
+                  'Phonk: ${notification.phonkTitle}',
+                  style: TextStyle(
+                    color: Colors.purple.withValues(alpha: 0.8),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
               const SizedBox(height: 4),
               Text(
                 _notificationService.getTimeAgo(notification.timestamp),
@@ -281,6 +299,8 @@ class _NotificationsSheetState extends State<NotificationsSheet> {
         return Icons.new_releases;
       case 'recommendation':
         return Icons.recommend;
+      case 'new_post':
+        return Icons.forum;
       default:
         return Icons.music_note;
     }
@@ -294,35 +314,70 @@ class _NotificationsSheetState extends State<NotificationsSheet> {
         return Colors.green;
       case 'recommendation':
         return Colors.blue;
+      case 'new_post':
+        return Colors.deepPurpleAccent;
       default:
         return Colors.purple;
     }
   }
 
   void _handleNotificationTap(PhonkNotification notification) async {
+    final isPostNotification = notification.type == 'new_post';
+
     // Mark as read
     await _notificationService.markAsRead(notification.id);
 
-    // Close bottom sheet
+    // Close bottom sheet first
     if (mounted) Navigator.pop(context);
 
-    // Navigate to search with phonk title
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => SearchScreen(initialQuery: notification.phonkTitle),
-      ),
-    );
+    if (isPostNotification) {
+      // Handle post notification - navigate to community
+      final postId = notification.postId;
 
-    // Show feedback
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Searching for: ${notification.phonkTitle}'),
-          backgroundColor: Colors.purple,
-          duration: const Duration(seconds: 2),
+      if (postId != null) {
+        // Highlight the post and navigate to community
+        CommunityFeedHighlighter.highlightPost(postId);
+        CommunityNavigationService.navigateToCommunity();
+
+        if (!mounted) return;
+
+        // Navigate directly to CommunityScreen using MaterialPageRoute
+        await Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const CommunityScreen()),
+        );
+
+        // Show feedback
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Opening community post'),
+              backgroundColor: Colors.deepPurpleAccent,
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+      }
+    } else {
+      if (!mounted) return;
+      // Handle phonk/music notification - navigate to search
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => SearchScreen(initialQuery: notification.phonkTitle),
         ),
       );
+
+      // Show feedback
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Searching for: ${notification.phonkTitle}'),
+            backgroundColor: Colors.purple,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
     }
   }
 

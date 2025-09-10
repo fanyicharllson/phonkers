@@ -104,6 +104,30 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         type: 'trending',
       );
     }
+
+    if (initialMessage != null) {
+      final type = initialMessage.data['type'];
+      final authorUsername = initialMessage.data['postAuthor'] ?? 'Unknown';
+      final postContent = initialMessage.data['postContent'] ?? '';
+      final authorId = initialMessage.data['postAuthorId'] ?? '';
+
+      if (type == 'new_post') {
+        final postId = initialMessage.data['postId'];
+        if (postId != null) {
+          NotificationService.setPendingPost(postId);
+
+          //also add to notification history
+          NotificationService().addNewPostNotification(
+            authorUsername: authorUsername,
+            postContent: postContent,
+            postId: postId,
+            authorId: authorId,
+          );
+        } else {
+          debugPrint("PostId is null: $postId");
+        }
+      }
+    }
   }
 
   /// 🔔 Handle notification taps and foreground messages
@@ -111,6 +135,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     // Background → tap notification
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
       final phonkTitle = message.data['phonkTitle'];
+      final type = message.data['type'];
       final title = message.notification?.title ?? '🔥New Trending Phonk';
       if (phonkTitle != null) {
         debugPrint("Background tap with phonk: $phonkTitle");
@@ -130,6 +155,30 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
           }
         });
       }
+
+      if (type != null) {
+        final type = message.data['type'];
+        final authorUsername = message.data['postAuthor'] ?? 'Unknown';
+        final postContent = message.data['postContent'] ?? '';
+        final authorId = message.data['postAuthorId'] ?? '';
+
+        if (type == 'new_post') {
+          final postId = message.data['postId'];
+          if (postId != null) {
+            NotificationService.setPendingPost(postId);
+
+            //also add to notification history
+            NotificationService().addNewPostNotification(
+              authorUsername: authorUsername,
+              postContent: postContent,
+              postId: postId,
+              authorId: authorId,
+            );
+          } else {
+            debugPrint("PostId is null: $postId");
+          }
+        }
+      }
     });
 
     // Foreground → app is open
@@ -147,6 +196,26 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
           phonkTitle: phonkTitle,
           type: 'trending',
         );
+
+        //Add post notification
+        final authorUsername = message.data['postAuthor'] ?? 'Unknown';
+        final postContent = message.data['postContent'] ?? '';
+        final authorId = message.data['postAuthorId'] ?? '';
+
+        final type = message.data['type'];
+        if (type == 'new_post') {
+          final postId = message.data['postId'];
+          if (postId != null) {
+            NotificationService().addNewPostNotification(
+              authorUsername: authorUsername,
+              postContent: postContent,
+              postId: postId,
+              authorId: authorId,
+            );
+          } else {
+            debugPrint("PostId is null: $postId");
+          }
+        }
 
         if (!mounted) return;
 

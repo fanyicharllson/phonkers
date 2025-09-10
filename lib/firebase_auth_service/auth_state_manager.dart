@@ -9,6 +9,7 @@ import 'package:phonkers/view/pages/email_check_page.dart';
 import 'package:phonkers/view/pages/main_page.dart';
 import 'package:phonkers/view/pages/welcome_info_page.dart';
 import 'package:phonkers/view/pages/welcome_page.dart';
+import 'package:phonkers/view/widget/notification_widget/notification_post_wrapper.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 // Import your main.dart to access the pending notification
@@ -84,6 +85,7 @@ class _AuthStateManagerState extends State<AuthStateManager> {
 
             // 🔔 Check if we have a pending notification from app startup
             final pendingPhonkTitle = NotificationService.pendingPhonkTitle;
+            final pendingPostId = NotificationService.pendingPostId;
             if (pendingPhonkTitle != null) {
               debugPrint("Found pending notification for: $pendingPhonkTitle");
 
@@ -97,6 +99,13 @@ class _AuthStateManagerState extends State<AuthStateManager> {
               );
             }
 
+            if (pendingPostId != null) {
+              NotificationService.clearPendingPost();
+              return NotificationPostWrapper(
+                postId: pendingPostId,
+                child: const MainPage(),
+              );
+            }
             // User signed in, verified, and profile complete - go to main app
             debugPrint(
               "User authenticated and profile complete - showing main page",

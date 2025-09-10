@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:phonkers/data/service/post_service.dart';
 import 'package:phonkers/view/widget/community_widget/comments_bottum_sheets.dart';
+import 'package:phonkers/view/widget/community_widget/community_feed_highlighter.dart';
 import 'package:phonkers/view/widget/network_widget/network_aware_mixin.dart';
 import 'package:phonkers/view/widget/toast_util.dart';
 import 'post_card.dart';
@@ -23,9 +24,46 @@ class CommunityFeed extends StatefulWidget {
 class _CommunityFeedState extends State<CommunityFeed>
     with AutomaticKeepAliveClientMixin, NetworkAwareMixin {
   final ScrollController _scrollController = ScrollController();
+  bool _hasScrolledToHighlighted = false;
 
   @override
   bool get wantKeepAlive => true;
+
+  @override
+  void initState() {
+    super.initState();
+    // Reset scroll flag when feed is created
+    _hasScrolledToHighlighted = false;
+  }
+
+  void _scrollToHighlightedPost(List<Map<String, dynamic>> posts) {
+    if (_hasScrolledToHighlighted) return;
+
+    final highlightedId = CommunityFeedHighlighter.highlightedPostId;
+    if (highlightedId == null) return;
+
+    final index = posts.indexWhere((post) => post['id'] == highlightedId);
+    if (index == -1) return;
+
+    _hasScrolledToHighlighted = true;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController
+            .animateTo(
+              index * 300.0, // estimate average post height
+              duration: const Duration(milliseconds: 800),
+              curve: Curves.easeInOut,
+            )
+            .then((_) {
+              // Clear highlight after a delay
+              Future.delayed(const Duration(seconds: 5), () {
+                CommunityFeedHighlighter.clearHighlight();
+              });
+            });
+      }
+    });
+  }
 
   void _onCommentPressed(Map<String, dynamic> post) {
     showModalBottomSheet(
@@ -53,7 +91,6 @@ class _CommunityFeedState extends State<CommunityFeed>
         background: Colors.deepPurple,
       );
     }
-    // no local setState needed since Firestore snapshot will update automatically
   }
 
   @override
@@ -119,24 +156,63 @@ class _CommunityFeedState extends State<CommunityFeed>
           return data;
         }).toList();
 
+        // Check if we need to scroll to a highlighted post
+        _scrollToHighlightedPost(posts);
+
         return RefreshIndicator(
           onRefresh: () async {
-            // with real-time snapshots, refresh is just UI gesture
             setState(() {});
           },
           backgroundColor: const Color(0xFF1A0B2E),
           color: const Color(0xFF9F7AEA),
-          child: ListView.builder(
-            controller: _scrollController,
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.only(top: 4, bottom: 100),
-            itemCount: posts.length,
-            itemBuilder: (context, index) {
-              final post = posts[index];
-              return PostCard(
-                post: post,
-                onLikePressed: () => _onLikePressed(post['id']),
-                onCommentPressed: () => _onCommentPressed(post),
+          child: ValueListenableBuilder(
+            valueListenable: CommunityFeedHighlighter.notifier,
+            builder: (context, _, __) {
+              return ListView.builder(
+                controller: _scrollController,
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.only(top: 4, bottom: 100),
+                itemCount: posts.length,
+                itemBuilder: (context, index) {
+                  final post = posts[index];
+                  final highlight = CommunityFeedHighlighter.shouldHighlight(
+                    post['id'],
+                  );
+
+                  return AnimatedContainer(
+                    duration: const Duration(milliseconds: 800),
+                    curve: Curves.easeInOut,
+                    margin: const EdgeInsets.symmetric(
+                      vertical: 4,
+                      horizontal: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                        color: highlight
+                            ? Colors.deepPurpleAccent
+                            : Colors.transparent,
+                        width: 2,
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: highlight
+                          ? [
+                              BoxShadow(
+                                color: Colors.deepPurpleAccent.withValues(
+                                  alpha: 0.3,
+                                ),
+                                blurRadius: 8,
+                                spreadRadius: 2,
+                              ),
+                            ]
+                          : null,
+                    ),
+                    child: PostCard(
+                      post: post,
+                      onLikePressed: () => _onLikePressed(post['id']),
+                      onCommentPressed: () => _onCommentPressed(post),
+                    ),
+                  );
+                },
               );
             },
           ),

@@ -2,14 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
-// 🔔 Notification Model
+// 🔔 Enhanced Notification Model with postId support
 class PhonkNotification {
   final String id;
   final String title;
   final String phonkTitle;
   final DateTime timestamp;
   final bool isRead;
-  final String type; // 'trending', 'new_release', etc.
+  final String type; // 'trending', 'new_release', 'new_post', etc.
+  final String? userId;
+  final String? postId; // Add postId field
+  final String? username;
 
   PhonkNotification({
     required this.id,
@@ -18,6 +21,9 @@ class PhonkNotification {
     required this.timestamp,
     this.isRead = false,
     this.type = 'trending',
+    this.userId,
+    this.postId, // Include postId in constructor
+    this.username,
   });
 
   Map<String, dynamic> toJson() {
@@ -28,6 +34,9 @@ class PhonkNotification {
       'timestamp': timestamp.millisecondsSinceEpoch,
       'isRead': isRead,
       'type': type,
+      'userId': userId,
+      'postId': postId, // Include in JSON
+      'username': username,
     };
   }
 
@@ -39,6 +48,9 @@ class PhonkNotification {
       timestamp: DateTime.fromMillisecondsSinceEpoch(json['timestamp']),
       isRead: json['isRead'] ?? false,
       type: json['type'] ?? 'trending',
+      userId: json['userId'],
+      postId: json['postId'], // Include from JSON
+      username: json['username'],
     );
   }
 
@@ -50,11 +62,14 @@ class PhonkNotification {
       timestamp: timestamp,
       isRead: isRead ?? this.isRead,
       type: type,
+      userId: userId,
+      postId: postId, // Preserve postId in copyWith
+      username: username,
     );
   }
 }
 
-// 🔔 Notification Service
+// 🔔 Enhanced Notification Service
 class NotificationService extends ChangeNotifier {
   static final NotificationService _instance = NotificationService._internal();
   factory NotificationService() => _instance;
@@ -62,22 +77,27 @@ class NotificationService extends ChangeNotifier {
 
   List<PhonkNotification> _notifications = [];
   static String? _pendingPhonkTitle;
+  static String? _pendingPostId;
 
   // Getters
   List<PhonkNotification> get notifications => _notifications;
   int get unreadCount => _notifications.where((n) => !n.isRead).length;
   static String? get pendingPhonkTitle => _pendingPhonkTitle;
+  static String? get pendingPostId => _pendingPostId;
 
   // Initialize service
   Future<void> initialize() async {
     await _loadNotifications();
   }
 
-  // 🔔 Add new notification
+  // 🔔 Add new notification (enhanced to properly handle postId)
   Future<void> addNotification({
     required String title,
     required String phonkTitle,
     String type = 'trending',
+    String? postId,
+    String? userId,
+    String? username,
   }) async {
     final notification = PhonkNotification(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -85,6 +105,9 @@ class NotificationService extends ChangeNotifier {
       phonkTitle: phonkTitle,
       timestamp: DateTime.now(),
       type: type,
+      postId: postId, // Properly store postId
+      userId: userId,
+      username: username,
     );
 
     _notifications.insert(0, notification); // Add to top
@@ -97,7 +120,42 @@ class NotificationService extends ChangeNotifier {
     await _saveNotifications();
     notifyListeners();
 
-    debugPrint("Added notification: $title - $phonkTitle");
+    debugPrint(
+      "Added notification: $title - $phonkTitle${postId != null ? ' (PostID: $postId)' : ''}",
+    );
+  }
+
+  // 🔔 Enhanced community post notification method
+  Future<void> addNewPostNotification({
+    required String authorUsername,
+    required String postContent,
+    required String postId,
+    required String authorId,
+  }) async {
+    await addNotification(
+      title: '$authorUsername shared a new post',
+      phonkTitle: postContent.length > 50
+          ? '${postContent.substring(0, 47)}...'
+          : postContent,
+      type: 'new_post',
+      postId: postId, // Pass the postId
+      userId: authorId,
+      username: authorUsername,
+    );
+  }
+
+  // 🔔 Get postId from notification
+  String? getPostId(String notificationId) {
+    final notification = _notifications.firstWhere(
+      (n) => n.id == notificationId,
+      orElse: () => PhonkNotification(
+        id: '',
+        title: '',
+        phonkTitle: '',
+        timestamp: DateTime.now(),
+      ),
+    );
+    return notification.postId;
   }
 
   // 🔔 Mark notification as read
@@ -142,6 +200,16 @@ class NotificationService extends ChangeNotifier {
   static void clearPendingPhonk() {
     debugPrint("Cleared pending phonk: $_pendingPhonkTitle");
     _pendingPhonkTitle = null;
+  }
+
+  static void setPendingPost(String postId) {
+    _pendingPostId = postId;
+    debugPrint("Set pending post: $postId");
+  }
+
+  static void clearPendingPost() {
+    debugPrint("Cleared pending post: $_pendingPostId");
+    _pendingPostId = null;
   }
 
   // 🔔 Get time ago string

@@ -1,6 +1,9 @@
+import 'dart:convert';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 
 class PostService {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -47,6 +50,26 @@ class PostService {
     };
 
     final docRef = await _firestore.collection('posts').add(postData);
+    final postId = docRef.id;
+
+    //! Notify phonkers-notification function
+    final url = Uri.parse(
+      "https://phonkers-notification.netlify.app/.netlify/functions/sendPostNotification",
+    );
+    await http.post(
+      url,
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({
+        "postId": postId,
+        "content": content,
+        "author": userData['username'] ?? user.displayName ?? 'Anonymous',
+        "authorId": user.uid,
+      }),
+    );
+
+    debugPrint(
+      "Notification function triggered and sent for new post: ${userData['username'] ?? user.displayName ?? 'Anonymous'}",
+    );
 
     // Update the document with its ID
     await docRef.update({'id': docRef.id});

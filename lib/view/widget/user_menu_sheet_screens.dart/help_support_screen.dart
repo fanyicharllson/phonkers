@@ -1,7 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:phonkers/data/service/help_support_service.dart';
+import 'package:phonkers/view/widget/network_widget/network_aware_mixin.dart';
 
-class HelpSupportScreen extends StatelessWidget {
+class HelpSupportScreen extends StatefulWidget {
   const HelpSupportScreen({super.key});
+
+  @override
+  State<HelpSupportScreen> createState() => _HelpSupportScreenState();
+}
+
+class _HelpSupportScreenState extends State<HelpSupportScreen>
+    with NetworkAwareMixin {
+  final HelpSupportService _helpSupportService = HelpSupportService();
 
   @override
   Widget build(BuildContext context) {
@@ -197,42 +207,145 @@ class HelpSupportScreen extends StatelessWidget {
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF2D1B47),
-        title: const Text(
-          'Send Feedback',
-          style: TextStyle(color: Colors.white),
-        ),
-        content: TextField(
-          controller: feedbackController,
-          maxLines: 5,
-          style: const TextStyle(color: Colors.white),
-          decoration: const InputDecoration(
-            hintText: 'Tell us what you think...',
-            hintStyle: TextStyle(color: Colors.white54),
-            border: OutlineInputBorder(),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text(
-              'Cancel',
-              style: TextStyle(color: Colors.white54),
+      builder: (context) {
+        bool isSubmitting = false;
+
+        return StatefulBuilder(
+          builder: (context, setState) => AlertDialog(
+            backgroundColor: const Color(0xFF2D1B47),
+            title: const Text(
+              'Send Feedback',
+              style: TextStyle(color: Colors.white),
             ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: feedbackController,
+                  maxLines: 5,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: const InputDecoration(
+                    hintText: 'Tell us what you think...',
+                    hintStyle: TextStyle(color: Colors.white54),
+                    border: OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.white30),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.purple),
+                    ),
+                  ),
+                ),
+                if (isSubmitting)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 16.0),
+                    child: CircularProgressIndicator(color: Colors.purple),
+                  ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: isSubmitting ? null : () => Navigator.pop(context),
+                child: const Text(
+                  'Cancel',
+                  style: TextStyle(color: Colors.white54),
+                ),
+              ),
+              ElevatedButton(
+                onPressed: isSubmitting
+                    ? null
+                    : () async {
+                        // Set loading state once here
+                        setState(() {
+                          isSubmitting = true;
+                        });
+
+                        await _submitFeedback(
+                          context,
+                          feedbackController.text.trim(),
+                          // Pass empty functions since we're managing state here
+                          () {}, // setSubmitting - already set above
+                          () => setState(
+                            () => isSubmitting = false,
+                          ), // clearSubmitting
+                        );
+                      },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.purple,
+                  foregroundColor: Colors.white,
+                ),
+                child: isSubmitting
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text('Send'),
+              ),
+            ],
           ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Thank you for your feedback!')),
-              );
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.purple),
-            child: const Text('Send'),
-          ),
-        ],
-      ),
+        );
+      },
     );
+  }
+
+  Future<void> _submitFeedback(
+    BuildContext context,
+    String feedback,
+    VoidCallback setSubmitting,
+    VoidCallback clearSubmitting,
+  ) async {
+    if (feedback.isEmpty) {
+      clearSubmitting();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Please enter your feedback before sending.',
+            style: TextStyle(color: Colors.white),
+          ),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    setSubmitting();
+
+    try {
+      await executeWithNetworkCheck<void>(
+        action: () => _helpSupportService.saveFeedback(
+          feedback: feedback,
+          category: 'general',
+        ),
+      );
+
+      if (context.mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Thank you for your feedback 😘! We\'ll review it soon.',
+              style: TextStyle(color: Colors.white),
+            ),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to send feedback: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      clearSubmitting();
+    }
   }
 }

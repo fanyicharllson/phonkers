@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:phonkers/view/widget/community_widget/community_feed.dart';
+import 'package:phonkers/view/widget/community_widget/community_feed_highlighter.dart';
 import 'package:phonkers/view/widget/community_widget/community_header.dart';
 import 'package:phonkers/view/widget/community_widget/floating_chat_button.dart';
 import 'package:phonkers/view/widget/community_widget/user_type_selector.dart';
@@ -20,10 +21,14 @@ class _CommunityScreenState extends State<CommunityScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+
+    // Listen for highlighted posts and switch to appropriate tab
+    CommunityFeedHighlighter.notifier.addListener(_checkForHighlightedPost);
   }
 
   @override
   void dispose() {
+    CommunityFeedHighlighter.notifier.removeListener(_checkForHighlightedPost);
     _tabController.dispose();
     super.dispose();
   }
@@ -35,6 +40,18 @@ class _CommunityScreenState extends State<CommunityScreen>
     setState(() {
       _selectedUserType = userType;
     });
+  }
+
+  void _checkForHighlightedPost() {
+    if (CommunityFeedHighlighter.highlightedPostId != null) {
+      // For now, default to recent tab (index 0) when highlighting
+      // You could enhance this to search all tabs for the post
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _tabController.index != 0) {
+          _tabController.animateTo(0);
+        }
+      });
+    }
   }
 
   @override
@@ -59,7 +76,7 @@ class _CommunityScreenState extends State<CommunityScreen>
         child: SafeArea(
           child: Column(
             children: [
-              // Compact Header Section - Much smaller
+              // Your existing header components
               const CommunityHeader(),
               UserTypeSelector(
                 selectedType: _selectedUserType,
@@ -102,7 +119,7 @@ class _CommunityScreenState extends State<CommunityScreen>
                 ),
               ),
 
-              // Tab Content - This is the key fix
+              // Tab Content
               Expanded(
                 child: SizedBox(
                   width: double.infinity,
