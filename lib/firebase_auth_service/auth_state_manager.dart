@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:phonkers/data/service/notification_service.dart';
 import 'package:phonkers/data/service/user_service.dart';
 import 'package:phonkers/firebase_auth_service/auth_service.dart';
+import 'package:phonkers/notification_search_wrapper.dart';
 import 'package:phonkers/view/pages/auth_page.dart';
 import 'package:phonkers/view/pages/email_check_page.dart';
 import 'package:phonkers/view/pages/main_page.dart';
 import 'package:phonkers/view/pages/welcome_info_page.dart';
 import 'package:phonkers/view/pages/welcome_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+// Import your main.dart to access the pending notification
 
 class AuthStateManager extends StatefulWidget {
   const AuthStateManager({super.key});
@@ -76,6 +80,21 @@ class _AuthStateManagerState extends State<AuthStateManager> {
             if (profileSnapshot.data != true) {
               debugPrint("User profile incomplete - showing welcome info");
               return const WelcomeInfoPage();
+            }
+
+            // 🔔 Check if we have a pending notification from app startup
+            final pendingPhonkTitle = NotificationService.pendingPhonkTitle;
+            if (pendingPhonkTitle != null) {
+              debugPrint("Found pending notification for: $pendingPhonkTitle");
+
+              // Clear the pending notification
+              NotificationService.clearPendingPhonk();
+
+              // Show search screen instead of main page
+              return NotificationSearchWrapper(
+                phonkTitle: pendingPhonkTitle,
+                child: const MainPage(),
+              );
             }
 
             // User signed in, verified, and profile complete - go to main app

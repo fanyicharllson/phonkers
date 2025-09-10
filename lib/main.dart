@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:phonkers/data/service/audio_player_service.dart';
+import 'package:phonkers/data/service/notification_service.dart';
 import 'package:phonkers/data/service/spotify_api_service.dart';
 import 'package:phonkers/data/service/youtube_api_service.dart';
 import 'package:phonkers/data/service/network_status_service.dart';
@@ -93,7 +94,15 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
     if (initialMessage != null && initialMessage.data['phonkTitle'] != null) {
       final phonkTitle = initialMessage.data['phonkTitle'];
-      _goToSearch(phonkTitle);
+      debugPrint("Cold start with phonk: $phonkTitle");
+      NotificationService.setPendingPhonk(phonkTitle);
+
+      // Also add to notification history
+      NotificationService().addNotification(
+        title: initialMessage.notification?.title ?? '🔥New Trending Phonk',
+        phonkTitle: phonkTitle,
+        type: 'trending',
+      );
     }
   }
 
@@ -102,8 +111,24 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     // Background → tap notification
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
       final phonkTitle = message.data['phonkTitle'];
+      final title = message.notification?.title ?? '🔥New Trending Phonk';
       if (phonkTitle != null) {
-        _goToSearch(phonkTitle);
+        debugPrint("Background tap with phonk: $phonkTitle");
+        NotificationService.setPendingPhonk(phonkTitle);
+
+        // Also add to notification history
+        NotificationService().addNotification(
+          title: title,
+          phonkTitle: phonkTitle,
+          type: 'trending',
+        );
+
+        // Try to navigate immediately if we have a navigator
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && Navigator.canPop(context)) {
+            _goToSearch(phonkTitle);
+          }
+        });
       }
     });
 
@@ -111,11 +136,38 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       if (message.notification != null) {
         debugPrint("Foreground push: ${message.notification!.title}");
+
+        final title = message.notification!.title ?? 'New Trending Phonk';
+        final phonkTitle = message.data['phonkTitle'] ?? 'Unknown Phonk';
+        debugPrint("Foreground push: $title");
+
+        // Add to notification service
+        NotificationService().addNotification(
+          title: title,
+          phonkTitle: phonkTitle,
+          type: 'trending',
+        );
+
         if (!mounted) return;
+
+        // Show snackbar with action to search
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(message.notification!.title ?? "New Trending Phonk"),
+            content: Text(
+              "New Trending Phonk: ${message.data['phonkTitle'] ?? 'Unknown'}",
+            ),
             backgroundColor: Colors.purple,
+            action: SnackBarAction(
+              label: 'Search',
+              textColor: Colors.white,
+              onPressed: () {
+                final phonkTitle = message.data['phonkTitle'];
+                if (phonkTitle != null) {
+                  _goToSearch(phonkTitle);
+                }
+              },
+            ),
+            duration: const Duration(seconds: 5),
           ),
         );
       }
