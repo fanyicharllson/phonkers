@@ -4,7 +4,7 @@ import 'package:phonkers/data/service/post_service.dart';
 import 'package:phonkers/view/widget/community_widget/comments_bottum_sheets.dart';
 import 'package:phonkers/view/widget/community_widget/community_feed_highlighter.dart';
 import 'package:phonkers/view/widget/network_widget/network_aware_mixin.dart';
-import 'package:phonkers/view/widget/toast_util.dart';
+// import 'package:phonkers/view/widget/toast_util.dart';
 import 'post_card.dart';
 
 class CommunityFeed extends StatefulWidget {
@@ -84,13 +84,13 @@ class _CommunityFeedState extends State<CommunityFeed>
       action: () => PostService.toggleLike(postId),
       useToast: true,
     );
-    if (mounted) {
-      ToastUtil.showToast(
-        context,
-        "Post liked!",
-        background: Colors.deepPurple,
-      );
-    }
+    // if (mounted) {
+    //   ToastUtil.showToast(
+    //     context,
+    //     "Post liked!",
+    //     background: Colors.deepPurple,
+    //   );
+    // }
   }
 
   @override

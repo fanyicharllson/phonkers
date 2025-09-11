@@ -447,6 +447,11 @@ class _PostCardState extends State<PostCard> {
                 _isLiked = !_isLiked;
               });
               //! Todo
+              ToastUtil.showToast(
+                context,
+                "Liking post... please wait",
+                background: Colors.deepPurple,
+              );
               widget.onLikePressed();
             },
           ),

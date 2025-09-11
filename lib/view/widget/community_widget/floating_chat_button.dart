@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:phonkers/view/widget/community_widget/create_post_sheet.dart';
+import 'package:phonkers/view/widget/toast_util.dart';
 
 class FloatingChatButton extends StatefulWidget {
   const FloatingChatButton({super.key});
@@ -100,6 +101,11 @@ class _FloatingChatButtonState extends State<FloatingChatButton>
                 onTap: () {
                   _toggleExpanded();
                   // TODO: Start voice recording
+                  ToastUtil.showToast(
+                    context,
+                    "Voice messaging coming soon!",
+                    background: Colors.deepPurpleAccent,
+                  );
                 },
               ),
             ),
@@ -113,6 +119,11 @@ class _FloatingChatButtonState extends State<FloatingChatButton>
                 onTap: () {
                   _toggleExpanded();
                   // TODO: Open music picker
+                  ToastUtil.showToast(
+                    context,
+                    "We are on this feature, Stay Tuned!",
+                    background: Colors.deepPurpleAccent,
+                  );
                 },
               ),
             ),
@@ -221,4 +232,3 @@ class _FloatingChatButtonState extends State<FloatingChatButton>
     );
   }
 }
-

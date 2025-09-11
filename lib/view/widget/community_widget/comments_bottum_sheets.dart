@@ -577,7 +577,20 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet>
   }
 
   Future<void> _toggleCommentLike(String commentId) async {
-    if (commentId.startsWith('temp_')) return; // Don't like optimistic comments
+    if (commentId.startsWith('temp_')) {
+      ToastUtil.showToast(
+        context,
+        "Can't Like this comment!",
+        background: Colors.deepPurpleAccent,
+      );
+      return;
+    } // Don't like optimistic comments
+
+    ToastUtil.showToast(
+      context,
+      "Please wait...",
+      background: Colors.deepPurple,
+    );
 
     try {
       await executeWithNetworkCheck(
