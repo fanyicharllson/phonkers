@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:phonkers/firebase_auth_service/auth_service.dart';
 import 'package:phonkers/view/widget/network_widget/network_aware_mixin.dart';
 import 'package:phonkers/view/widget/search_widgets/recent_search_widget.dart';
 import 'package:phonkers/view/widget/search_widgets/search_bar_widget.dart';
@@ -386,12 +387,27 @@ class _SearchScreenState extends State<SearchScreen>
             ),
           ),
           actions: [
-            FadeTransition(
-              opacity: _fadeAnimation,
-              child: IconButton(
-                icon: const Icon(Icons.info_outline, color: Colors.white70),
-                onPressed: showQuotaDialog,
+            FutureBuilder<Map<String, dynamic>>(
+              future: authService.value.getUserProfile().then(
+                (value) => value ?? <String, dynamic>{},
               ),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState != ConnectionState.done) {
+                  return const SizedBox.shrink();
+                }
+                final profile = snapshot.data ?? {};
+                final userType = profile['userType'] as String? ?? 'fan';
+                if (userType != 'founder') {
+                  return const SizedBox.shrink();
+                }
+                return FadeTransition(
+                  opacity: _fadeAnimation,
+                  child: IconButton(
+                    icon: const Icon(Icons.info_outline, color: Colors.white70),
+                    onPressed: showQuotaDialog,
+                  ),
+                );
+              },
             ),
           ],
         ),
