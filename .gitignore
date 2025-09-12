@@ -18,6 +18,8 @@ migrate_working_dir/
 *.iws
 .idea/
 
+phonkers-key.jks
+
 # The .vscode folder contains launch configuration and tasks you configure in
 # VS Code which you may wish to be included in version control, so this line
 # is commented out by default.
@@ -50,3 +52,4 @@ lib/spam.txt
 lib/data/service/youtube_api_service.dart
 lib/data/service/spotify_api_service.dart
 lib/cloudinary/cloudinary_service.dart
+
