@@ -1,4 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:phonkers/data/service/user_favorite_service.dart';
+import 'package:phonkers/view/widget/library_widget/library_content.dart';
+import 'package:phonkers/view/widget/library_widget/library_header.dart';
+import 'package:phonkers/view/widget/library_widget/library_login_prompt.dart';
 
 class LibraryScreen extends StatefulWidget {
   const LibraryScreen({super.key});
@@ -9,37 +14,44 @@ class LibraryScreen extends StatefulWidget {
 
 class _LibraryScreenState extends State<LibraryScreen>
     with AutomaticKeepAliveClientMixin {
+  final UserFavoritesService _favoritesService = UserFavoritesService();
+  final User? _currentUser = FirebaseAuth.instance.currentUser;
+
   @override
   bool get wantKeepAlive => true;
 
   @override
   Widget build(BuildContext context) {
     super.build(context);
+
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [Color(0xFF0A0A0F), Color(0xFF1A0B2E), Color(0xFF0A0A0F)],
+          colors: [
+            Color(0xFF0A0A0F),
+            Color(0xFF1A0B2E),
+            Color(0xFF2D1B4D),
+            Color(0xFF1A0B2E),
+            Color(0xFF0A0A0F),
+          ],
+          stops: [0.0, 0.25, 0.5, 0.75, 1.0],
         ),
       ),
-      child: const SafeArea(
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.library_music, size: 80, color: Colors.purple),
-              SizedBox(height: 20),
-              Text(
-                "Your Library",
-                style: TextStyle(color: Colors.white, fontSize: 24),
-              ),
-              Text(
-                "We are working actively on this feature. Stay tuned.",
-                style: TextStyle(color: Colors.white70, fontSize: 16),
-              ),
-            ],
-          ),
+      child: SafeArea(
+        child: Column(
+          children: [
+            const LibraryHeader(),
+            Expanded(
+              child: _currentUser == null
+                  ? const LibraryLoginPrompt()
+                  : LibraryContent(
+                      userId: _currentUser.uid,
+                      favoritesService: _favoritesService,
+                    ),
+            ),
+          ],
         ),
       ),
     );

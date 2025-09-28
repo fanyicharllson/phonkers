@@ -1,4 +1,6 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:phonkers/data/service/user_favorite_service.dart';
 import 'package:phonkers/view/widget/featured_widget/featured_phonk_controls.dart';
 import 'package:phonkers/view/widget/featured_widget/featured_phonk_info.dart';
 import 'package:phonkers/view/widget/toast_util.dart';
@@ -41,6 +43,11 @@ class _FeaturedPhonkCardState extends State<FeaturedPhonkCard>
   // Animation controller for visual effects
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
+
+  //Handling user fav
+  bool _isLoadingFav = false;
+  bool _isFavorited = false;
+  final UserFavoritesService _favoritesService = UserFavoritesService();
 
   // Timeout state
   bool _hasShownTimeoutMessage = false;
@@ -160,6 +167,8 @@ class _FeaturedPhonkCardState extends State<FeaturedPhonkCard>
               _isLoadingPhonk = false;
               _updateCurrentPlayingState(AudioPlayerService.currentPhonk);
             });
+            // Load favorites precisely after setting the featured phonk
+            _checkIfFavorited();
           }
         } else {
           if (mounted) {
@@ -469,14 +478,108 @@ class _FeaturedPhonkCardState extends State<FeaturedPhonkCard>
             isPlaying: _isPlaying,
             isLoading: _isLoading,
             onPlay: _handlePlayFeatured,
+            isFavorited: _isFavorited,
+            isLoadingFav: _isLoadingFav,
             onStop: () {
               AudioPlayerService.stop();
             },
-            onFavorite: () =>
-                _showMessage('Added to favorites!', isSuccess: true),
+            onFavorite: () => _toggleFavorite(),
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _toggleFavorite() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Please log in to add favorites',
+            style: TextStyle(color: Colors.white),
+          ),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoadingFav = true;
+    });
+
+    try {
+      final newState = await executeWithNetworkCheck(
+        action: () async {
+          return await _favoritesService.toggleFavorite(
+            user.uid,
+            _featuredPhonk!.id,
+            _featuredPhonk!,
+          );
+        },
+        onNoInternet: () {
+          if (mounted) {
+            setState(() {
+              _isLoadingFav = false;
+            });
+          }
+          ToastUtil.showToast(
+            context,
+            "Please check your network connection and try again!",
+            background: Colors.deepPurple,
+            duration: Duration(seconds: 5),
+          );
+        },
+        showSnackBar: false
+      );
+
+      if (mounted) {
+        setState(() {
+          _isFavorited = newState!;
+          _isLoadingFav = false;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              newState! ? 'Added to favorites ❤️' : 'Removed from favorites',
+              style: TextStyle(color: Colors.white),
+            ),
+            backgroundColor: Colors.purple,
+            duration: const Duration(seconds: 1),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoadingFav = false;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error updating favorites: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _checkIfFavorited() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null && _featuredPhonk != null) {
+      final isFav = await _favoritesService.isFavorited(
+        user.uid,
+        _featuredPhonk!.id,
+      );
+      if (mounted) {
+        setState(() {
+          _isFavorited = isFav;
+        });
+      }
+    }
   }
 }

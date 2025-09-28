@@ -6,10 +6,12 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:phonkers/data/model/phonk.dart';
 import 'package:phonkers/data/service/audio_player_service.dart';
 import 'package:phonkers/data/service/user_favorite_service.dart';
+import 'package:phonkers/view/widget/network_widget/network_aware_mixin.dart';
 import 'package:phonkers/view/widget/phonk_play_button.dart';
 import 'package:phonkers/view/widget/playback_options_bottom_sheet.dart';
 import 'package:phonkers/view/widget/streaming_indicator.dart'
     show StreamingIndicators;
+import 'package:phonkers/view/widget/toast_util.dart';
 
 class TrendingPhonkCard extends StatefulWidget {
   final Phonk phonk;
@@ -21,7 +23,8 @@ class TrendingPhonkCard extends StatefulWidget {
   State<TrendingPhonkCard> createState() => _TrendingPhonkCardState();
 }
 
-class _TrendingPhonkCardState extends State<TrendingPhonkCard> {
+class _TrendingPhonkCardState extends State<TrendingPhonkCard>
+    with NetworkAwareMixin {
   final UserFavoritesService _favoritesService = UserFavoritesService();
   bool _isFavorited = false;
   bool _isLoadingFav = false;
@@ -479,22 +482,41 @@ class _TrendingPhonkCardState extends State<TrendingPhonkCard> {
     });
 
     try {
-      final newState = await _favoritesService.toggleFavorite(
-        user.uid,
-        widget.phonk.id,
-        widget.phonk,
+      final newState = await executeWithNetworkCheck(
+        action: () async {
+          return await _favoritesService.toggleFavorite(
+            user.uid,
+            widget.phonk.id,
+            widget.phonk,
+          );
+        },
+        onNoInternet: () {
+          if (mounted) {
+            setState(() {
+              _isLoadingFav = false;
+            });
+          }
+          ToastUtil.showToast(
+            context,
+            "Please check your network connection and try again!",
+            background: Colors.deepPurple,
+            duration: Duration(seconds: 5),
+          );
+        },
+        showSnackBar: false
       );
 
       if (mounted) {
         setState(() {
-          _isFavorited = newState;
+          _isFavorited = newState!;
           _isLoadingFav = false;
         });
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              newState ? 'Added to favorites ❤️' : 'Removed from favorites',
+              newState! ? 'Added to favorites ❤️' : 'Removed from favorites',
+              style: TextStyle(color: Colors.white),
             ),
             backgroundColor: Colors.purple,
             duration: const Duration(seconds: 1),

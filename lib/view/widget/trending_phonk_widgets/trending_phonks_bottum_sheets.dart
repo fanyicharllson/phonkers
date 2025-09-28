@@ -1,7 +1,9 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:phonkers/data/model/phonk.dart';
 import 'package:phonkers/data/service/phonk_service.dart';
 import 'package:phonkers/data/service/audio_player_service.dart';
+import 'package:phonkers/data/service/user_favorite_service.dart';
 import 'package:phonkers/view/widget/network_widget/network_aware_mixin.dart';
 import 'package:phonkers/view/widget/toast_util.dart';
 import 'dart:async';
@@ -57,6 +59,12 @@ class _TrendingPhonksBottomSheetState extends State<TrendingPhonksBottomSheet>
   // Animation
   late AnimationController _slideController;
   late Animation<Offset> _slideAnimation;
+
+  //Handling toggling
+  final UserFavoritesService _favoritesService = UserFavoritesService();
+
+  final Map<String, bool> _favoriteStates = {};
+  final Map<String, bool> _loadingStates = {};
 
   @override
   void initState() {
@@ -220,6 +228,10 @@ class _TrendingPhonksBottomSheetState extends State<TrendingPhonksBottomSheet>
           _isLoading = false;
           _updateCurrentPlayingIndex();
         });
+
+        //! Check if favorite phonk exist
+        _checkIfFavorited(_trendingPhonks);
+
       }
     } catch (e) {
       if (mounted) {
@@ -237,11 +249,9 @@ class _TrendingPhonksBottomSheetState extends State<TrendingPhonksBottomSheet>
   }
 
   Future<void> _playPhonk(Phonk phonk) async {
-    //!=============
-    debugPrint("Showing loading now before playing trending phonk...");
     ToastUtil.showToast(
       context,
-      'Please wait, why we load ${phonk.title}...',
+      'Please wait, while we load ${phonk.title}...',
       background: Colors.deepPurple,
       duration: Duration(seconds: 6),
     );
@@ -252,6 +262,11 @@ class _TrendingPhonksBottomSheetState extends State<TrendingPhonksBottomSheet>
       },
       onNoInternet: () {
         _showNetworkError();
+        ToastUtil.showToast(
+          context,
+          "Please check your network connection and try again!",
+          background: Colors.deepPurple,
+        );
       },
       showSnackBar: false,
     );
@@ -259,6 +274,14 @@ class _TrendingPhonksBottomSheetState extends State<TrendingPhonksBottomSheet>
     if (result != null && mounted) {
       _handlePlayResult(result, phonk);
     } else {
+      if (mounted) {
+        ToastUtil.showToast(
+          context,
+          "An occured while playing the audio! please try again in few minutes.",
+          background: Colors.redAccent,
+          duration: Duration(seconds: 4),
+        );
+      }
       _showErrorSnackbar('Error playing ${phonk.title}');
       _isLoading = false;
       _isAudioLoading = false;
@@ -501,8 +524,106 @@ class _TrendingPhonksBottomSheetState extends State<TrendingPhonksBottomSheet>
             }
           },
           onStop: () => AudioPlayerService.stop(),
+          onToggleFavorite: () => _toggleFavorite(phonk),
+          isFavorite: _favoriteStates[phonk.id] ?? false,
+          isFavoriteLoading: _loadingStates[phonk.id] ?? false,
         );
       },
     );
+  }
+
+  Future<void> _toggleFavorite(Phonk phonk) async {
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please log in to add favorites'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _loadingStates[phonk.id] = true;
+    });
+
+    try {
+      bool? newState;
+      newState = await executeWithNetworkCheck(
+        action: () async {
+          return await _favoritesService.toggleFavorite(
+            user.uid,
+            phonk.id,
+            phonk,
+          );
+        },
+        onNoInternet: () {
+          if (mounted) {
+            setState(() {
+              _favoriteStates[phonk.id] = false;
+              _loadingStates[phonk.id] = false;
+            });
+          }
+          ToastUtil.showToast(
+            context,
+            "Please check your network connection and try again!",
+            background: Colors.deepPurple,
+            duration: Duration(seconds: 5),
+          );
+        },
+        showSnackBar: false,
+      );
+
+      if (mounted && newState != null) {
+        setState(() {
+          _favoriteStates[phonk.id] = newState!;
+          _loadingStates[phonk.id] = false;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              newState ? 'Added to favorites ❤️' : 'Removed from favorites',
+              style: TextStyle(color: Colors.white),
+            ),
+            backgroundColor: Colors.purple,
+            duration: const Duration(seconds: 1),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _loadingStates[phonk.id] = false;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error updating favorites: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _checkIfFavorited(List<Phonk> phonks) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      for (final phonk in phonks) {
+        final isFav = await _favoritesService.isFavorited(
+          user.uid,
+          phonk.id,
+        );
+        if (mounted) {
+          setState(() {
+            _favoriteStates[phonk.id] = isFav;
+          });
+        }
+      }
+    }
   }
 }

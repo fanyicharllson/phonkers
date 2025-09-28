@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 
 class UserService {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -139,9 +140,9 @@ class UserService {
       // Execute all deletions as a batch
       await batch.commit();
 
-      print('User data deleted successfully');
+      debugPrint('User data deleted successfully');
     } catch (e) {
-      print('Error deleting user data: $e');
+      debugPrint('Error deleting user data: $e');
       throw Exception('Failed to delete user data: $e');
     }
   }
@@ -153,9 +154,9 @@ class UserService {
 
     try {
       await _firestore.collection('users').doc(user.uid).delete();
-      print('User profile deleted successfully');
+      debugPrint('User profile deleted successfully');
     } catch (e) {
-      print('Error deleting user profile: $e');
+      debugPrint('Error deleting user profile: $e');
       throw Exception('Failed to delete user profile: $e');
     }
   }
@@ -189,9 +190,9 @@ class UserService {
       }
 
       await batch.commit();
-      print('User data anonymized successfully');
+      debugPrint('User data anonymized successfully');
     } catch (e) {
-      print('Error anonymizing user data: $e');
+      debugPrint('Error anonymizing user data: $e');
       throw Exception('Failed to anonymize user data: $e');
     }
   }

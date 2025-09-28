@@ -11,6 +11,9 @@ class TrendingPhonkListItem extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback onPlayPause;
   final VoidCallback onStop;
+  final bool isFavorite;
+  final bool isFavoriteLoading;
+  final VoidCallback onToggleFavorite;
 
   const TrendingPhonkListItem({
     super.key,
@@ -23,6 +26,9 @@ class TrendingPhonkListItem extends StatelessWidget {
     required this.onTap,
     required this.onPlayPause,
     required this.onStop,
+    required this.isFavorite,
+    required this.isFavoriteLoading,
+    required this.onToggleFavorite
   });
 
   @override
@@ -62,7 +68,7 @@ class TrendingPhonkListItem extends StatelessWidget {
             trailing: _buildTrailing(),
             onTap: isCurrentlyPlaying ? null : onTap,
           ),
-          
+
           // Progress indicator for currently playing track
           if (isCurrentlyPlaying && position.inMilliseconds > 0)
             _buildProgressIndicator(),
@@ -91,12 +97,14 @@ class TrendingPhonkListItem extends StatelessWidget {
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 12,
-                fontWeight: isCurrentlyPlaying ? FontWeight.bold : FontWeight.w500,
+                fontWeight: isCurrentlyPlaying
+                    ? FontWeight.bold
+                    : FontWeight.w500,
               ),
             ),
           ),
         ),
-        
+
         // Overlay for current state
         if (isCurrentlyPlaying) ...[
           Container(
@@ -107,7 +115,7 @@ class TrendingPhonkListItem extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
             ),
           ),
-          
+
           if (isLoading)
             const Positioned.fill(
               child: Center(
@@ -158,20 +166,13 @@ class TrendingPhonkListItem extends StatelessWidget {
             Expanded(
               child: Text(
                 phonk.artist,
-                style: const TextStyle(
-                  color: Colors.white70,
-                  fontSize: 12,
-                ),
+                style: const TextStyle(color: Colors.white70, fontSize: 12),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
             ),
             if (isCurrentlyPlaying && isPlaying && !isLoading) ...[
-              Icon(
-                Icons.equalizer,
-                color: Colors.purple.shade300,
-                size: 12,
-              ),
+              Icon(Icons.equalizer, color: Colors.purple.shade300, size: 12),
               const SizedBox(width: 4),
               Text(
                 'Playing',
@@ -187,10 +188,7 @@ class TrendingPhonkListItem extends StatelessWidget {
         const SizedBox(height: 2),
         Text(
           '${_formatPlayCount(phonk.plays)} plays',
-          style: const TextStyle(
-            color: Colors.white54,
-            fontSize: 11,
-          ),
+          style: const TextStyle(color: Colors.white54, fontSize: 11),
         ),
       ],
     );
@@ -201,28 +199,60 @@ class TrendingPhonkListItem extends StatelessWidget {
       return Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Play/Pause button
-          IconButton(
-            icon: Icon(
+          // Love button (compact)
+          GestureDetector(
+            onTap: onToggleFavorite, // Add this callback
+            child: Container(
+              width: 24,
+              height: 24,
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.6),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Center(
+                child:
+                    isFavoriteLoading // Add this state
+                    ? const SizedBox(
+                        width: 10,
+                        height: 10,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 1,
+                          color: Colors.white,
+                        ),
+                      )
+                    : Icon(
+                        isFavorite ? Icons.favorite : Icons.favorite_border,
+                        color: isFavorite ? Colors.red : Colors.white,
+                        size: 12,
+                      ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 4),
+
+          // Play/Pause button (smaller)
+          GestureDetector(
+            onTap: isLoading ? null : onPlayPause,
+            child: Icon(
               isLoading
                   ? Icons.hourglass_empty
                   : isPlaying
-                      ? Icons.pause_circle_filled
-                      : Icons.play_circle_filled,
+                  ? Icons.pause_circle_filled
+                  : Icons.play_circle_filled,
               color: Colors.purple,
-              size: 28,
+              size: 24, // Reduced from 28
             ),
-            onPressed: isLoading ? null : onPlayPause,
           ),
-          
-          // Stop button
-          IconButton(
-            icon: const Icon(
+          const SizedBox(width: 4),
+
+          // Stop button (smaller)
+          GestureDetector(
+            onTap: onStop,
+            child: const Icon(
               Icons.stop_circle_outlined,
               color: Colors.red,
-              size: 24,
+              size: 20, // Reduced from 24
             ),
-            onPressed: onStop,
           ),
         ],
       );
@@ -231,18 +261,45 @@ class TrendingPhonkListItem extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(
-          _formatDuration(phonk.duration), //! Default 30s for previews
-          style: const TextStyle(
-            color: Colors.white54,
-            fontSize: 11,
+        // Love button for non-playing state
+        GestureDetector(
+          onTap: onToggleFavorite,
+          child: Container(
+            width: 20,
+            height: 20,
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.4),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Center(
+              child: isFavoriteLoading
+                  ? const SizedBox(
+                      width: 8,
+                      height: 8,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 1,
+                        color: Colors.white54,
+                      ),
+                    )
+                  : Icon(
+                      isFavorite ? Icons.favorite : Icons.favorite_border,
+                      color: isFavorite ? Colors.red : Colors.white54,
+                      size: 10,
+                    ),
+            ),
           ),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 6),
+
+        Text(
+          _formatDuration(phonk.duration),
+          style: const TextStyle(color: Colors.white54, fontSize: 11),
+        ),
+        const SizedBox(width: 6), // Reduced from 8
         const Icon(
           Icons.play_circle_outline,
           color: Colors.white54,
-          size: 24,
+          size: 20, // Reduced from 24
         ),
       ],
     );
@@ -263,10 +320,7 @@ class TrendingPhonkListItem extends StatelessWidget {
             children: [
               Text(
                 '${position.inMinutes}:${(position.inSeconds % 60).toString().padLeft(2, '0')}',
-                style: const TextStyle(
-                  color: Colors.white70,
-                  fontSize: 10,
-                ),
+                style: const TextStyle(color: Colors.white70, fontSize: 10),
               ),
               Text(
                 '0:30',

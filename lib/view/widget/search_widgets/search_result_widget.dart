@@ -1,7 +1,12 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:phonkers/data/model/phonk.dart';
+import 'package:phonkers/data/service/user_favorite_service.dart';
+import 'package:phonkers/view/widget/network_widget/network_aware_mixin.dart';
 import 'package:phonkers/view/widget/search_widgets/search_result_item_widget.dart';
+import 'package:phonkers/view/widget/toast_util.dart';
 
-class SearchResultsWidget extends StatelessWidget {
+class SearchResultsWidget extends StatefulWidget {
   final List<Map<String, dynamic>> searchResults;
   final bool hasSearched;
   final String currentQuery;
@@ -20,12 +25,29 @@ class SearchResultsWidget extends StatelessWidget {
   });
 
   @override
+  State<SearchResultsWidget> createState() => _SearchResultsWidgetState();
+}
+
+class _SearchResultsWidgetState extends State<SearchResultsWidget>
+    with NetworkAwareMixin {
+  final UserFavoritesService _favoritesService = UserFavoritesService();
+
+  final Map<String, bool> _favoriteStates = {};
+  final Map<String, bool> _loadingStates = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _checkIfFavorited(widget.searchResults);
+  }
+
+  @override
   Widget build(BuildContext context) {
-    if (!hasSearched) {
+    if (!widget.hasSearched) {
       return const SizedBox.shrink();
     }
 
-    if (searchResults.isEmpty) {
+    if (widget.searchResults.isEmpty) {
       return _buildEmptyState();
     }
 
@@ -34,7 +56,7 @@ class SearchResultsWidget extends StatelessWidget {
 
   Widget _buildEmptyState() {
     return FadeTransition(
-      opacity: fadeAnimation,
+      opacity: widget.fadeAnimation,
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
         padding: const EdgeInsets.all(40),
@@ -78,7 +100,7 @@ class SearchResultsWidget extends StatelessWidget {
 
   Widget _buildResultsList() {
     return FadeTransition(
-      opacity: fadeAnimation,
+      opacity: widget.fadeAnimation,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -86,11 +108,16 @@ class SearchResultsWidget extends StatelessWidget {
           Expanded(
             child: ListView.builder(
               padding: const EdgeInsets.only(bottom: 100),
-              itemCount: searchResults.length,
+              itemCount: widget.searchResults.length,
               itemBuilder: (context, index) {
+                final track = widget.searchResults[index];
+                final id = track['id']?['videoId'] ?? track['id'];
                 return SearchResultItemWidget(
-                  track: searchResults[index],
-                  onPlayTrack: onPlayTrack,
+                  track: track,
+                  onPlayTrack: widget.onPlayTrack,
+                  isFavorite: _favoriteStates[id] ?? false,
+                  isFavLoading: _loadingStates[id] ?? false,
+                  toggleFavorite: () => _toggleFavorite(track),
                   // isTrackCurrentlyPlaying: isTrackCurrentlyPlaying,  // Pass down here
                 );
               },
@@ -110,7 +137,7 @@ class SearchResultsWidget extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              'Results for "$currentQuery"',
+              'Results for "${widget.currentQuery}"',
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 16,
@@ -126,7 +153,7 @@ class SearchResultsWidget extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
-              '${searchResults.length}',
+              '${widget.searchResults.length}',
               style: const TextStyle(
                 color: Colors.purple,
                 fontSize: 12,
@@ -137,5 +164,113 @@ class SearchResultsWidget extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _toggleFavorite(Map<String, dynamic> track) async {
+    final user = FirebaseAuth.instance.currentUser;
+    final id = track['id']?['videoId'] ?? track['id'];
+    final title = track['snippet']?['title'] ?? 'Unknown';
+    final channelTitle = track['snippet']?['channelTitle'] ?? 'Unknown';
+
+    final tempPhonk = Phonk(
+      id: id,
+      title: title,
+      artist: channelTitle,
+      albumName: 'YouTube Search',
+      uploadDate: DateTime.now(),
+      duration: 30,
+      plays: 0,
+      previewUrl: null,
+      spotifyUrl: null,
+    );
+
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please log in to add favorites'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _loadingStates[id] = true;
+    });
+
+    try {
+      bool? newState;
+      newState = await executeWithNetworkCheck(
+        action: () async {
+          return await _favoritesService.toggleFavorite(
+            user.uid,
+            id,
+            tempPhonk,
+          );
+        },
+        onNoInternet: () {
+          if (mounted) {
+            setState(() {
+              _favoriteStates[id] = false;
+              _loadingStates[id] = false;
+            });
+          }
+          ToastUtil.showToast(
+            context,
+            "Please check your network connection and try again!",
+            background: Colors.deepPurple,
+            duration: Duration(seconds: 5),
+          );
+        },
+        showSnackBar: false,
+      );
+
+      if (mounted && newState != null) {
+        setState(() {
+          _favoriteStates[id] = newState!;
+          _loadingStates[id] = false;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              newState ? 'Added to favorites ❤️' : 'Removed from favorites',
+              style: TextStyle(color: Colors.white),
+            ),
+            backgroundColor: Colors.purple,
+            duration: const Duration(seconds: 1),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _loadingStates[id] = false;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error updating favorites: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _checkIfFavorited(List<Map<String, dynamic>> phonkList) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      for (var track in phonkList) {
+        final id = track['id']?['videoId'] ?? track['id'];
+        final isFav = await _favoritesService.isFavorited(user.uid, id);
+        if (mounted) {
+          setState(() {
+            _favoriteStates[id] = isFav;
+          });
+        }
+      }
+    }
   }
 }

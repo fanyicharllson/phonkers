@@ -8,6 +8,9 @@ class FeaturedPhonkControls extends StatelessWidget {
   final VoidCallback onStop;
   final VoidCallback onFavorite;
 
+  final bool isFavorited;
+  final bool isLoadingFav;
+
   const FeaturedPhonkControls({
     super.key,
     required this.isCurrentlyPlaying,
@@ -16,6 +19,8 @@ class FeaturedPhonkControls extends StatelessWidget {
     required this.onPlay,
     required this.onStop,
     required this.onFavorite,
+    required this.isFavorited,
+    required this.isLoadingFav,
   });
 
   @override
@@ -114,11 +119,20 @@ class FeaturedPhonkControls extends StatelessWidget {
               color: Colors.white.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(20),
             ),
-            child: const Icon(
-              Icons.favorite_border,
-              color: Colors.white,
-              size: 20,
-            ),
+            child: isLoadingFav
+                ? const SizedBox(
+                    width: 12,
+                    height: 12,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 1,
+                      color: Colors.white,
+                    ),
+                  )
+                : Icon(
+                    isFavorited ? Icons.favorite : Icons.favorite_border,
+                    color: isFavorited ? Colors.red : Colors.white,
+                    size: 16,
+                  ),
           ),
           tooltip: 'Add to Favorites',
         ),

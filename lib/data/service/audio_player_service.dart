@@ -85,7 +85,7 @@ class AudioPlayerService {
     debugPrint('Loading state changed to: $loading'); // Debug log
   }
 
-  // Enhanced playPhonk method with YouTube fallback
+  //! Enhanced playPhonk method with YouTube fallback
   static Future<PlayResult> playPhonk(Phonk phonk) async {
     try {
       _stopRequested = false; // Reset at the start
@@ -146,7 +146,7 @@ class AudioPlayerService {
     }
   }
 
-  // Play from YouTube directly (for when user selects YouTube option)
+  //! Play from YouTube directly (for when user selects YouTube option)
   static Future<PlayResult> playFromYouTube(String artist, String title) async {
     try {
       _isInitiatingPlayback = true;

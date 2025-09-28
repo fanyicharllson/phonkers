@@ -291,7 +291,7 @@ class _SearchScreenState extends State<SearchScreen>
                 children: [
                   const Icon(Icons.play_arrow, color: Colors.white, size: 20),
                   const SizedBox(width: 8),
-                  Expanded(child: Text('Playing: $title')),
+                  Expanded(child: Text('Playing: $title', style: TextStyle(color: Colors.white))),
                 ],
               ),
               backgroundColor: Colors.green.withValues(alpha: 0.8),
@@ -303,7 +303,7 @@ class _SearchScreenState extends State<SearchScreen>
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Text('No audio preview available for this track'),
+              content: const Text('No audio preview available for this track',  style: TextStyle(color: Colors.white)),
               backgroundColor: Colors.orange.withValues(alpha: 0.8),
               duration: const Duration(seconds: 2),
             ),
@@ -316,7 +316,10 @@ class _SearchScreenState extends State<SearchScreen>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Could not play: ${e.toString()}'),
+            content: Text(
+              'Could not play: ${e.toString()}',
+              style: TextStyle(color: Colors.white),
+            ),
             backgroundColor: Colors.red.withValues(alpha: 0.8),
           ),
         );
@@ -359,9 +362,6 @@ class _SearchScreenState extends State<SearchScreen>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    debugPrint(
-      "Current notification query been passed: ${widget.initialQuery} --debugPrint",
-    );
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(

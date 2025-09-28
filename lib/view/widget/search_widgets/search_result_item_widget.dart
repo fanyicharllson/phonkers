@@ -8,11 +8,17 @@ import 'package:phonkers/view/widget/network_widget/network_aware_mixin.dart';
 class SearchResultItemWidget extends StatefulWidget {
   final Map<String, dynamic> track;
   final Function(Map<String, dynamic>) onPlayTrack;
+  final bool isFavorite;
+  final bool isFavLoading;
+  final void Function() toggleFavorite;
 
   const SearchResultItemWidget({
     super.key,
     required this.track,
     required this.onPlayTrack,
+    required this.isFavLoading,
+    required this.isFavorite,
+    required this.toggleFavorite,
   });
 
   @override
@@ -499,46 +505,76 @@ class _SearchResultItemWidgetState extends State<SearchResultItemWidget>
       return const Icon(Icons.open_in_new, color: Colors.orange, size: 20);
     }
 
-    if (isCurrentlyPlaying) {
-      return Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          IconButton(
-            icon: Icon(
-              isLoading
-                  ? (_hasShownTimeoutMessage
-                        ? Icons.hourglass_bottom
-                        : Icons.hourglass_empty)
-                  : isPlaying
-                  ? Icons.pause_circle_filled
-                  : Icons.play_circle_filled,
-              color: isLoading && _hasShownTimeoutMessage
-                  ? Colors.orange
-                  : Colors.purple,
-              size: 28,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        // Always show favorite button
+        GestureDetector(
+          onTap: widget.toggleFavorite,
+          child: Container(
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.6),
+              borderRadius: BorderRadius.circular(14),
             ),
-            onPressed: isLoading ? null : () => _handlePlayPause(isPlaying),
+            child: Center(
+              child: widget.isFavLoading
+                  ? const SizedBox(
+                      width: 12,
+                      height: 12,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 1,
+                        color: Colors.white,
+                      ),
+                    )
+                  : Icon(
+                      widget.isFavorite
+                          ? Icons.favorite
+                          : Icons.favorite_border,
+                      color: widget.isFavorite ? Colors.red : Colors.white,
+                      size: 16,
+                    ),
+            ),
           ),
-          IconButton(
-            icon: const Icon(
-              Icons.stop_circle_outlined,
-              color: Colors.red,
-              size: 24,
-            ),
-            onPressed: () {
-              _cancelLoadingTimeout();
-              _hasShownTimeoutMessage = false;
-              AudioPlayerService.stop();
-            },
+        ),
+        // Only show controls if currently playing
+        if (isCurrentlyPlaying) ...[
+          const SizedBox(height: 4),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Combine play/pause and stop into a single compact row
+              GestureDetector(
+                onTap: isLoading ? null : () => _handlePlayPause(isPlaying),
+                child: Icon(
+                  isLoading
+                      ? (_hasShownTimeoutMessage
+                            ? Icons.hourglass_bottom
+                            : Icons.hourglass_empty)
+                      : isPlaying
+                      ? Icons.pause
+                      : Icons.play_arrow,
+                  color: isLoading && _hasShownTimeoutMessage
+                      ? Colors.orange
+                      : Colors.purple,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: () {
+                  _cancelLoadingTimeout();
+                  _hasShownTimeoutMessage = false;
+                  AudioPlayerService.stop();
+                },
+                child: const Icon(Icons.stop, color: Colors.red, size: 18),
+              ),
+            ],
           ),
         ],
-      );
-    }
-
-    return const Icon(
-      Icons.play_circle_filled,
-      color: Colors.white70,
-      size: 28,
+      ],
     );
   }
 

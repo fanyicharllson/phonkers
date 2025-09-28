@@ -64,7 +64,7 @@ class AppInfoWidget extends StatelessWidget {
             ),
           ),
           child: const Text(
-            'Version 1.0.0',
+            'Version 1.1.0',
             style: TextStyle(
               color: Colors.purple,
               fontSize: 14,

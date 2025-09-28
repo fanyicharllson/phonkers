@@ -69,7 +69,7 @@ class _TrendingSectionState extends State<TrendingSection>
           _isLoading = false;
         });
       }
-      debugPrint('Error loading trending phonks: $e');
+      debugPrint('Error loading trending phonks in trending phonk section: $e');
     }
   }
 
@@ -142,7 +142,7 @@ class _TrendingSectionState extends State<TrendingSection>
       return _isNetworkError
           ? buildNoInternetError(
               onRetry: _loadTrendingPhonks,
-              message: 'Connect to internet to see trending phonks',
+              message: 'Connect to internet to see trending phonks!',
             )
           : _buildGenericError();
     }
@@ -229,9 +229,7 @@ class _TrendingSectionState extends State<TrendingSection>
                 Icon(Icons.wifi_off, color: Colors.white),
                 SizedBox(width: 12),
                 Expanded(
-                  child: Text(
-                    'Internet connection required for audio playback',
-                  ),
+                  child: Text('Check your network connection and try again!'),
                 ),
               ],
             ),
@@ -245,6 +243,7 @@ class _TrendingSectionState extends State<TrendingSection>
           ),
         );
       },
+      showSnackBar: false,
     );
 
     if (result == null || !mounted) return;
@@ -253,7 +252,10 @@ class _TrendingSectionState extends State<TrendingSection>
       case PlayResult.success:
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Playing preview: ${phonk.title} by ${phonk.artist}'),
+            content: Text(
+              'Playing preview: ${phonk.title} by ${phonk.artist}',
+              style: TextStyle(color: Colors.white),
+            ),
             backgroundColor: Colors.purple,
             behavior: SnackBarBehavior.floating,
             action: SnackBarAction(
@@ -346,8 +348,9 @@ class _TrendingSectionState extends State<TrendingSection>
                   debugPrint('Opening Spotify: ${phonk.spotifyUrl}');
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text('Feature coming Soon!',
-                      style: TextStyle(color: Colors.white), 
+                      content: Text(
+                        'Feature coming Soon!',
+                        style: TextStyle(color: Colors.white),
                       ),
                       backgroundColor: Colors.green,
                       behavior: SnackBarBehavior.floating,
